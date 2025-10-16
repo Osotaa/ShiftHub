@@ -8,6 +8,7 @@ local validKeys = {
     "29<^0M$a?TDhvHA9s25PIfXl53z7yrLiZ",
     "wdRT1Rbn8!tD+mHrEfDKx7^gvJhsI74<C",
     "!^FljA&=oSxzytjaJLSuza4lmJ6BnM8E7",
+    "xotao",
     -- ADICIONE TODAS AS SUAS CHAVES VÁLIDAS AQUI
 }
 
@@ -204,3 +205,4 @@ end
 
 -- 3. CHAMA A JANELA PRINCIPAL
 openMainWindow()
+
