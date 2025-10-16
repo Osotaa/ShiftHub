@@ -1,4 +1,4 @@
--- Roblox LUA Script (rollback seguro, sem hook)
+-- Roblox LUA Script
 local allowedPlaceIds = {17687504411, 16146832113}
 local currentPlaceId = game.PlaceId
 
@@ -175,3 +175,4 @@ function openMainWindow()
     mainWindow.Visible = true
     playSound(openSoundId)
 end
+
