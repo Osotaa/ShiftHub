@@ -45,7 +45,7 @@ end
 
 -- Carrega Rayfield (usando a versão oficial)
 local success, Rayfield = pcall(function()
-    return loadstring(game:HttpGet("https://raw.githubusercontent.com/shlexware/Rayfield/main/main.lua"))()
+    return loadstring(game:HttpGet("https://raw.githubusercontent.com/Osotaa/teste/refs/heads/main/source2.lua"))()
 end)
 if not success or not Rayfield then
     warn("Falha ao carregar Rayfield UI")
@@ -222,3 +222,4 @@ function openMainWindow()
     playSound(openSoundId)
     warn("Main window criada com sucesso!")
 end
+
