@@ -94,24 +94,10 @@ keyTab:CreateButton({
     Callback = function()
         if isValidKey(userKey) then
             Rayfield:Notify({Title="Success", Content="Valid key!", Duration=3})
-            keyWindow:Destroy()  -- Destrói apenas a keyWindow
-            warn("Key window destruída. Tentando abrir a main window...")
-            wait(1)  -- Aumentado para 1 segundo
-            local ok, err = pcall(function()  -- Usando pcall para capturar erros
-                if Rayfield then  -- Verifica se Rayfield ainda está carregado
-                    openMainWindow()
-                else
-                    warn("Rayfield não está mais disponível!")
-                    Rayfield:Notify({Title="Error", Content="Falha ao carregar Rayfield para a main window!", Duration=5})
-                end
-            end)
-            if not ok then
-                warn("Erro ao abrir main window: " .. tostring(err))
-                Rayfield:Notify({Title="Error", Content="Falha ao abrir a main window: " .. tostring(err), Duration=5})
-                sendWebhook("Jogador **"..playerName.."** teve um erro ao validar a key: " .. tostring(err))
-            else
-                sendWebhook("Jogador **"..playerName.."** validou a key com sucesso.")
-            end
+            Rayfield:Destroy()
+            wait(0.2)
+            openMainWindow()
+            sendWebhook("Jogador **"..playerName.."** validou a key com sucesso.")
         else
             Rayfield:Notify({Title="Error", Content="Invalid key!", Duration=5})
             sendWebhook("Jogador **"..playerName.."** tentou usar uma key inválida.")
@@ -121,7 +107,6 @@ keyTab:CreateButton({
 
 -- MAIN WINDOW
 function openMainWindow()
-    warn("Tentando criar a main window...")
     local mainWindow = Rayfield:CreateWindow({
         Name = "Shift Hub",
         LoadingTitle = "Shift Hub",
@@ -212,6 +197,4 @@ function openMainWindow()
 
     mainWindow.Visible = true
     playSound(openSoundId)
-    warn("Main window criada com sucesso!")
 end
-
