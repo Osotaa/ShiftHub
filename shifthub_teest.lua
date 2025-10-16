@@ -1,4 +1,39 @@
--- Roblox LUA Script
+-- NOVO shifthub_teest.lua (COM VALIDAÇÃO NO INÍCIO)
+
+-- Configurações de verificação de chave
+local userKey = _G.key_to_check or "" -- Pega a chave definida no script local
+local validKeys = {
+    "j^3Y*($aR3m8ABevaC5p3KNUucAgRxiqm",
+    "-us3OVbZTAkKtT?2A9KmrhV6X^aFt>woh",
+    "29<^0M$a?TDhvHA9s25PIfXl53z7yrLiZ",
+    "wdRT1Rbn8!tD+mHrEfDKx7^gvJhsI74<C",
+    "!^FljA&=oSxzytjaJLSuza4lmJ6BnM8E7",
+    -- ADICIONE TODAS AS SUAS CHAVES VÁLIDAS AQUI
+}
+
+local function isValidKey(key)
+    if not key or key == "" then return false end
+    for _, k in pairs(validKeys) do
+        if key == k then return true end
+    end
+    return false
+end
+
+-- 1. FAZ A VALIDAÇÃO
+if not isValidKey(userKey) then
+    warn("Key Invalida ou nao fornecida. Script remoto abortado.")
+    
+    -- Notificação simples de falha (pode usar CoreGui se o Rayfield ainda não estiver carregado)
+    game.StarterGui:SetCore("SendNotification", {
+        Title = "Shift Hub",
+        Text = "Chave Inválida. O script foi abortado.",
+        Duration = 5
+    })
+    return -- *** IMPORTANTE: Aborta a execução do script remoto ***
+end
+
+-- Se a chave é válida, o script continua:
+
 local allowedPlaceIds = {17687504411, 16146832113}
 local currentPlaceId = game.PlaceId
 
@@ -45,7 +80,7 @@ end
 
 -- Carrega Rayfield
 local success, Rayfield = pcall(function()
-    -- ******* Nota: Você pode tentar mudar este link para uma versão oficial se o erro persistir. ********
+    -- ********** Use a versão corrigida do Rayfield que funcionou para você **********
     return loadstring(game:HttpGet("https://raw.githubusercontent.com/Osotaa/teste/refs/heads/main/source2.lua"))()
 end)
 if not success or not Rayfield then
@@ -53,36 +88,11 @@ if not success or not Rayfield then
     return
 end
 
--- Envia webhook ao executar o script
+-- Envia webhook ao executar o script (agora sabemos que a chave é válida)
 local playerName = Players.LocalPlayer and Players.LocalPlayer.Name or "Unknown"
-sendWebhook("Script Shift Hub executado por **"..playerName.."** no PlaceId: "..tostring(currentPlaceId))
+sendWebhook("Script Shift Hub executado com **SUCESSO** por **"..playerName.."** (Key: "..userKey..") no PlaceId: "..tostring(currentPlaceId))
 
--- KEY WINDOW
-local keyWindow = Rayfield:CreateWindow({
-    Name = "Shift Hub - Key",
-    LoadingTitle = "Loading Shift Hub...",
-    LoadingSubtitle = "Checking Key...",
-    ConfigurationSaving = { Enabled = false },
-    KeySystem = false
-})
-
-local keyTab = keyWindow:CreateTab("🔑 Key")
-local userKey = ""
-local validKeys = {
-    "j^3Y*($aR3m8ABevaC5p3KNUucAgRxiqm",
-    "-us3OVbZTAkKtT?2A9KmrhV6X^aFt>woh",
-    "29<^0M$a?TDhvHA9s25PIfXl53z7yrLiZ",
-    "wdRT1Rbn8!tD+mHrEfDKx7^gvJhsI74<C",
-    "!^FljA&=oSxzytjaJLSuza4lmJ6BnM8E7"
-}
-
-local function isValidKey(key)
-    for _, k in pairs(validKeys) do
-        if key == k then return true end
-    end
-    return false
-end
-
+-- Função para notificações seguras
 local function safeNotify(options)
     local ok, err = pcall(function()
         Rayfield:Notify(options)
@@ -97,55 +107,9 @@ local function safeNotify(options)
     end
 end
 
-keyTab:CreateInput({
-    Name = "Your Key",
-    PlaceholderText = "Enter your key here",
-    RemoveTextAfterFocusLost = false,
-    Callback = function(value) userKey = value end
-})
-
-keyTab:CreateButton({
-    Name = "Validate Key",
-    Callback = function()
-        if isValidKey(userKey) then
-            safeNotify({Title="Success", Content="Valid key!", Duration=3})
-            
-            -- ****** CORREÇÃO DO ERRO 'attempt to call missing method Destroy' ******
-            local ok_destroy, err_destroy = pcall(function()
-                if keyWindow and keyWindow.Destroy then
-                    keyWindow:Destroy()
-                else
-                    warn(" keyWindow ou método Destroy não existe. Continuando...")
-                end
-            end)
-            if not ok_destroy then
-                warn("Erro ao tentar destruir keyWindow: " .. tostring(err_destroy))
-            end
-            -- **********************************************************************
-
-            warn("Tentando abrir a main window...")
-            wait(1)
-            
-            local ok, err = pcall(function()
-                if Rayfield then
-                    openMainWindow()
-                else
-                    warn("Rayfield não está mais disponível!")
-                end
-            end)
-            if not ok then
-                warn("Erro ao abrir main window: " .. tostring(err))
-                safeNotify({Title="Error", Content="Falha ao abrir a main window: " .. tostring(err), Duration=5})
-                sendWebhook("Jogador **"..playerName.."** teve um erro ao validar a key: " .. tostring(err))
-            else
-                sendWebhook("Jogador **"..playerName.."** validou a key com sucesso.")
-            end
-        else
-            safeNotify({Title="Error", Content="Invalid key!", Duration=5})
-            sendWebhook("Jogador **"..playerName.."** tentou usar uma key inválida.")
-        end
-    end
-})
+-- ***************************************************************
+-- ** JANELA PRINCIPAL (NÃO HÁ MAIS LÓGICA DE KEY/GUI AQUI) **
+-- ***************************************************************
 
 -- MAIN WINDOW
 function openMainWindow()
@@ -153,7 +117,7 @@ function openMainWindow()
     local mainWindow = Rayfield:CreateWindow({
         Name = "Shift Hub",
         LoadingTitle = "Shift Hub",
-        LoadingSubtitle = "",
+        LoadingSubtitle = "Bem-vindo, " .. playerName,
         ConfigurationSaving = { Enabled = false },
         KeySystem = false
     })
@@ -237,3 +201,6 @@ function openMainWindow()
     playSound(openSoundId)
     warn("Main window criada com sucesso!")
 end
+
+-- 3. CHAMA A JANELA PRINCIPAL
+openMainWindow()
