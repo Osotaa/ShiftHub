@@ -94,8 +94,8 @@ keyTab:CreateButton({
     Callback = function()
         if isValidKey(userKey) then
             Rayfield:Notify({Title="Success", Content="Valid key!", Duration=3})
-            Rayfield:Destroy()
-            wait(0.2)
+            keyWindow:Destroy()  -- Alteração aqui: Destrói apenas a keyWindow
+            wait(0.5)  -- Aumentei o delay para 0.5 segundos para evitar problemas de timing
             openMainWindow()
             sendWebhook("Jogador **"..playerName.."** validou a key com sucesso.")
         else
