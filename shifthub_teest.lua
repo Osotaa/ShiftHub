@@ -45,6 +45,7 @@ end
 
 -- Carrega Rayfield
 local success, Rayfield = pcall(function()
+    -- ******* Nota: Você pode tentar mudar este link para uma versão oficial se o erro persistir. ********
     return loadstring(game:HttpGet("https://raw.githubusercontent.com/Osotaa/teste/refs/heads/main/source2.lua"))()
 end)
 if not success or not Rayfield then
@@ -108,8 +109,23 @@ keyTab:CreateButton({
     Callback = function()
         if isValidKey(userKey) then
             safeNotify({Title="Success", Content="Valid key!", Duration=3})
-            warn("Pulando destruição da key window. Tentando abrir a main window...")
+            
+            -- ****** CORREÇÃO DO ERRO 'attempt to call missing method Destroy' ******
+            local ok_destroy, err_destroy = pcall(function()
+                if keyWindow and keyWindow.Destroy then
+                    keyWindow:Destroy()
+                else
+                    warn(" keyWindow ou método Destroy não existe. Continuando...")
+                end
+            end)
+            if not ok_destroy then
+                warn("Erro ao tentar destruir keyWindow: " .. tostring(err_destroy))
+            end
+            -- **********************************************************************
+
+            warn("Tentando abrir a main window...")
             wait(1)
+            
             local ok, err = pcall(function()
                 if Rayfield then
                     openMainWindow()
