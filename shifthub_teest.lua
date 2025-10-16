@@ -43,7 +43,7 @@ local function sendWebhook(message)
     end)
 end
 
--- Carrega Rayfield (usando a versão oficial)
+-- Carrega Rayfield (usando a versão que você confirmou)
 local success, Rayfield = pcall(function()
     return loadstring(game:HttpGet("https://raw.githubusercontent.com/Osotaa/teste/refs/heads/main/source2.lua"))()
 end)
@@ -108,9 +108,8 @@ keyTab:CreateButton({
     Callback = function()
         if isValidKey(userKey) then
             safeNotify({Title="Success", Content="Valid key!", Duration=3})
-            keyWindow:Destroy()  -- Correção: Usa keyWindow:Destroy()
-            warn("Key window destruída. Tentando abrir a main window...")
-            wait(1)
+            warn("Pulando destruição da key window. Tentando abrir a main window...")
+            wait(1)  -- Mantendo o delay para segurança
             local ok, err = pcall(function()
                 if Rayfield then
                     openMainWindow()
@@ -222,4 +221,3 @@ function openMainWindow()
     playSound(openSoundId)
     warn("Main window criada com sucesso!")
 end
-
