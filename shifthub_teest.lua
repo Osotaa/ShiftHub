@@ -1,4 +1,4 @@
--- Roblox LUA Script (versão limpa, sem logger problemático)
+-- Roblox LUA Script (versão segura, sem logger e sem hook perigoso)
 local allowedPlaceIds = {17687504411, 16146832113} -- IDs permitidos
 local currentPlaceId = game.PlaceId
 
@@ -56,15 +56,17 @@ local function isValidKey(key)
     return false
 end
 
--- KEY GUI
-local ok, Rayfield = pcall(function()
+-- CARREGA RAYFIELD (apenas 1 vez, com pcall)
+local success, Rayfield = pcall(function()
     return loadstring(game:HttpGet('https://raw.githubusercontent.com/oxotaa/teste/refs/heads/main/source2.lua'))()
 end)
-if not ok or not Rayfield then
+
+if not success or not Rayfield then
     warn("Falha ao carregar Rayfield UI")
     return
 end
 
+-- KEY WINDOW
 local keyWindow = Rayfield:CreateWindow({
     Name = "Shift Hub - Key",
     LoadingTitle = "Loading Shift Hub...",
@@ -112,11 +114,10 @@ keyTab:CreateButton({
 keyTab:CreateButton({
     Name = "Open Discord",
     Callback = function()
-        local success, err = pcall(function()
+        local okc, erre = pcall(function()
             setclipboard("https://discord.gg/mAn7k89V")
         end)
-
-        if success then
+        if okc then
             Rayfield:Notify({
                 Title = "Link copied!",
                 Content = "Discord link copied to clipboard. Paste in browser to join.",
@@ -133,9 +134,10 @@ keyTab:CreateButton({
     end
 })
 
--- FUNÇÃO PRINCIPAL DA GUI
+-- FUNÇÃO PRINCIPAL DA GUI (versão segura do rollback)
 function openMainWindow()
-    local Rayfield2 = loadstring(game:HttpGet('https://raw.githubusercontent.com/oxotaa/teste/refs/heads/main/source2.lua'))()
+    -- Recarrega Rayfield (já carregado antes) — pode usar a mesma instância
+    local Rayfield2 = Rayfield
 
     local mainWindow = Rayfield2:CreateWindow({
         Name = "Shift Hub",
@@ -149,26 +151,8 @@ function openMainWindow()
     local mainTab = mainWindow:CreateTab("🏠 Main")
     mainTab:CreateSection("Welcome to Shift Hub!")
 
-    -- Rollback Trait
+    -- Rollback Trait (SEGURA: sem hook no metatable)
     local rollbackEnabled = false
-
-    -- Hook do metatable para rollback seguro
-    local mt = getrawmetatable(game)
-    setreadonly(mt, false)
-    local oldNamecall = mt.__namecall
-
-    mt.__namecall = newcclosure(function(self, ...)
-        local method = getnamecallmethod()
-        if rollbackEnabled and (self:IsA("RemoteEvent") or self:IsA("RemoteFunction")) then
-            print("[Rollback] Bloqueado:", self.Name)
-            if self:IsA("RemoteFunction") and method == "InvokeServer" then
-                return false
-            else
-                return nil
-            end
-        end
-        return oldNamecall(self, ...)
-    end)
 
     mainTab:CreateToggle({
         Name = "Rollback Trait",
@@ -176,8 +160,10 @@ function openMainWindow()
         Callback = function(value)
             rollbackEnabled = value
             if rollbackEnabled then
-                print("Rollback Ativado.")
+                Rayfield2:Notify({Title = "Rollback", Content = "Rollback trait ativado. Use Confirm Rollback para rejoin seguro.", Duration = 3})
+                print("Rollback Ativado (modo seguro).")
             else
+                Rayfield2:Notify({Title = "Rollback", Content = "Rollback trait desativado.", Duration = 3})
                 print("Rollback Desativado.")
             end
         end
@@ -187,11 +173,17 @@ function openMainWindow()
         Name = "Confirm Rollback",
         Callback = function()
             if rollbackEnabled then
-                Rayfield2:Notify({Title = "Rollback", Content = "Rollback carregando...", Duration = 3})
-                wait(6)
-                Rayfield2:Notify({Title = "Rollback", Content = "Rollback feito com sucesso.", Duration = 3})
-                wait(3)
-                TeleportService:Teleport(game.PlaceId, game.Players.LocalPlayer)
+                -- Ação segura: rejoin/teleport para o mesmo PlaceId
+                Rayfield2:Notify({Title = "Rollback", Content = "Rollback carregando... Reentrando na instância.", Duration = 3})
+                wait(2)
+                -- TeleportService pode falhar em alguns contextos; usar pcall para não travar o script
+                local ok, err = pcall(function()
+                    TeleportService:Teleport(game.PlaceId, Players.LocalPlayer)
+                end)
+                if not ok then
+                    warn("Falha ao executar TeleportService: " .. tostring(err))
+                    Rayfield2:Notify({Title = "Error", Content = "Falha ao reentrar: "..tostring(err), Duration = 5})
+                end
             else
                 Rayfield2:Notify({Title = "Error", Content = "Rollback Trait não está ativado.", Duration = 3})
             end
@@ -205,7 +197,12 @@ function openMainWindow()
     configsTab:CreateButton({
         Name = "Rejoin",
         Callback = function()
-            TeleportService:Teleport(game.PlaceId, game.Players.LocalPlayer)
+            local ok, err = pcall(function()
+                TeleportService:Teleport(game.PlaceId, Players.LocalPlayer)
+            end)
+            if not ok then
+                warn("Falha ao executar Rejoin: " .. tostring(err))
+            end
         end
     })
 
@@ -221,17 +218,21 @@ function openMainWindow()
         end
     })
 
-    UserInputService.InputBegan:Connect(function(input, processed)
+    -- Input listener (guarda a conexão para evitar múltiplas conexões se necessário)
+    local inputConn
+    inputConn = UserInputService.InputBegan:Connect(function(input, processed)
         if listeningForBind and input.UserInputType == Enum.UserInputType.Keyboard then
             bindKey = input.KeyCode
             listeningForBind = false
             bindLabel:SetText("Current Bind: " .. tostring(bindKey.Name))
         elseif bindKey and input.UserInputType == Enum.UserInputType.Keyboard and input.KeyCode == bindKey then
-            mainWindow.Visible = not mainWindow.Visible
-            if mainWindow.Visible then
-                playSound(openSoundId)
-            else
-                playSound(closeSoundId)
+            if mainWindow.Visible ~= nil then
+                mainWindow.Visible = not mainWindow.Visible
+                if mainWindow.Visible then
+                    playSound(openSoundId)
+                else
+                    playSound(closeSoundId)
+                end
             end
         end
     end)
