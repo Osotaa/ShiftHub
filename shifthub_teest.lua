@@ -1,10 +1,19 @@
 -- Roblox LUA Script
-local allowedPlaceId = 17687504411
-if game.PlaceId ~= allowedPlaceId then
-    warn("Script only works in All Star Tower Defense.")
-    return
+local allowedPlaceIds = {17687504411, 16146832113} -- IDs permitidos
+local currentPlaceId = game.PlaceId
+
+local isAllowed = false
+for _, id in pairs(allowedPlaceIds) do
+    if currentPlaceId == id then
+        isAllowed = true
+        break
+    end
 end
 
+if not isAllowed then
+    warn("Script only works in All Star Tower Defense and Anime Vanguards!")
+    return
+end
 local HttpService = game:GetService("HttpService")
 local UserInputService = game:GetService("UserInputService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -24,6 +33,25 @@ local function playSound(assetId)
     sound.Ended:Connect(function()
         sound:Destroy()
     end)
+end
+
+-- Lista de keys válidas
+local validKeys = {
+    "j^3Y*($aR3m8ABevaC5p3KNUucAgRxiqm",
+    "-us3OVbZTAkKtT?2A9KmrhV6X^aFt>woh",
+    "29<^0M$a?TDhvHA9s25PIfXl53z7yrLiZ",
+    "wdRT1Rbn8!tD+mHrEfDKx7^gvJhsI74<C",
+    "!^FljA&=oSxzytjaJLSuza4lmJ6BnM8E7"
+}
+
+-- Função para validar a key
+local function isValidKey(key)
+    for _, k in pairs(validKeys) do
+        if key == k then
+            return true
+        end
+    end
+    return false
 end
 
 -- KEY GUI
@@ -51,7 +79,7 @@ keyTab:CreateInput({
 keyTab:CreateButton({
     Name = "Validate Key",
     Callback = function()
-        if userKey == ".w9SUW_IL^Cq&JyldotWZrqMnVjRi4W3U" then
+        if isValidKey(userKey) then
             Rayfield:Notify({
                 Title = "Success",
                 Content = "Valid key! Welcome to Shift Hub.",
