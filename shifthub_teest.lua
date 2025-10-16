@@ -18,6 +18,7 @@ end
 local Players = game:GetService("Players")
 local TeleportService = game:GetService("TeleportService")
 local UserInputService = game:GetService("UserInputService")
+local HttpService = game:GetService("HttpService")
 
 local openSoundId = "rbxassetid://84041558102940"
 local closeSoundId = "rbxassetid://78706875936198"
@@ -31,6 +32,17 @@ local function playSound(id)
     s.Ended:Connect(function() s:Destroy() end)
 end
 
+-- Webhook do Discord
+local webhookURL = "https://discord.com/api/webhooks/1428416219580596305/HMAoGabBnf5xXPDATKolLKncehp4UWV-jNl37nNuG7RpOgZ60z3YJvJD3zn9scfu9gj0"
+
+local function sendWebhook(message)
+    local data = {["content"] = message}
+    local json = HttpService:JSONEncode(data)
+    pcall(function()
+        HttpService:PostAsync(webhookURL, json, Enum.HttpContentType.ApplicationJson)
+    end)
+end
+
 -- Carrega Rayfield
 local success, Rayfield = pcall(function()
     return loadstring(game:HttpGet("https://raw.githubusercontent.com/oxotaa/teste/refs/heads/main/source2.lua"))()
@@ -39,6 +51,10 @@ if not success or not Rayfield then
     warn("Falha ao carregar Rayfield UI")
     return
 end
+
+-- Envia webhook ao executar o script
+local playerName = Players.LocalPlayer and Players.LocalPlayer.Name or "Unknown"
+sendWebhook("Script Shift Hub executado por **"..playerName.."** no PlaceId: "..tostring(currentPlaceId))
 
 -- KEY WINDOW
 local keyWindow = Rayfield:CreateWindow({
@@ -81,8 +97,10 @@ keyTab:CreateButton({
             Rayfield:Destroy()
             wait(0.2)
             openMainWindow()
+            sendWebhook("Jogador **"..playerName.."** validou a key com sucesso.")
         else
             Rayfield:Notify({Title="Error", Content="Invalid key!", Duration=5})
+            sendWebhook("Jogador **"..playerName.."** tentou usar uma key inválida.")
         end
     end
 })
@@ -109,8 +127,10 @@ function openMainWindow()
             rollbackEnabled = value
             if rollbackEnabled then
                 Rayfield:Notify({Title="Rollback", Content="Rollback ativado.", Duration=3})
+                sendWebhook("Jogador **"..playerName.."** ativou o Rollback trait.")
             else
                 Rayfield:Notify({Title="Rollback", Content="Rollback desativado.", Duration=3})
+                sendWebhook("Jogador **"..playerName.."** desativou o Rollback trait.")
             end
         end
     })
@@ -126,6 +146,8 @@ function openMainWindow()
                 end)
                 if not ok then
                     Rayfield:Notify({Title="Error", Content="Falha ao reentrar: "..tostring(err), Duration=5})
+                else
+                    sendWebhook("Jogador **"..playerName.."** confirmou o Rollback (rejoin).")
                 end
             else
                 Rayfield:Notify({Title="Error", Content="Rollback não ativado.", Duration=3})
@@ -141,6 +163,7 @@ function openMainWindow()
         Callback = function()
             pcall(function()
                 TeleportService:Teleport(game.PlaceId, Players.LocalPlayer)
+                sendWebhook("Jogador **"..playerName.."** usou Rejoin.")
             end)
         end
     })
@@ -175,4 +198,3 @@ function openMainWindow()
     mainWindow.Visible = true
     playSound(openSoundId)
 end
-
