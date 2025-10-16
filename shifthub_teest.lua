@@ -1,5 +1,5 @@
 -- IMPORTANTE: ALTERE 'http://localhost:3000/verify' PARA O IP PÚBLICO DO SEU SERVIDOR!
-local API_URL_BASE = "https://patchily-droopiest-herbert.ngrok-free.dev" 
+local API_URL_BASE = "https://patchily-droopiest-herbert.ngrok-free.dev/verify"
 
 local function getHwid()
     local hwid = ""
@@ -81,4 +81,5 @@ if VALIDACAO_SUCESSO then
 else
     warn("[ShiftHub Loader] Script principal não carregado.")
 end
+
 
