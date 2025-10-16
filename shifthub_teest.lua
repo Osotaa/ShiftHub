@@ -43,9 +43,9 @@ local function sendWebhook(message)
     end)
 end
 
--- Carrega Rayfield
+-- Carrega Rayfield (usando a versão oficial)
 local success, Rayfield = pcall(function()
-    return loadstring(game:HttpGet("https://raw.githubusercontent.com/Osotaa/ShiftHub/refs/heads/main/shifthub_teest.lua"))()
+    return loadstring(game:HttpGet("https://raw.githubusercontent.com/shlexware/Rayfield/main/main.lua"))()
 end)
 if not success or not Rayfield then
     warn("Falha ao carregar Rayfield UI")
@@ -82,6 +82,20 @@ local function isValidKey(key)
     return false
 end
 
+local function safeNotify(options)
+    local ok, err = pcall(function()
+        Rayfield:Notify(options)
+    end)
+    if not ok then
+        warn("Erro ao chamar Rayfield:Notify: " .. tostring(err))
+        game.StarterGui:SetCore("SendNotification", {
+            Title = "Erro",
+            Text = "Falha na notificação: " .. tostring(err),
+            Duration = 5
+        })
+    end
+end
+
 keyTab:CreateInput({
     Name = "Your Key",
     PlaceholderText = "Enter your key here",
@@ -93,13 +107,26 @@ keyTab:CreateButton({
     Name = "Validate Key",
     Callback = function()
         if isValidKey(userKey) then
-            Rayfield:Notify({Title="Success", Content="Valid key!", Duration=3})
-            Rayfield:Destroy()
-            wait(0.2)
-            openMainWindow()
-            sendWebhook("Jogador **"..playerName.."** validou a key com sucesso.")
+            safeNotify({Title="Success", Content="Valid key!", Duration=3})
+            keyWindow:Destroy()  -- Correção: Usa keyWindow:Destroy()
+            warn("Key window destruída. Tentando abrir a main window...")
+            wait(1)
+            local ok, err = pcall(function()
+                if Rayfield then
+                    openMainWindow()
+                else
+                    warn("Rayfield não está mais disponível!")
+                end
+            end)
+            if not ok then
+                warn("Erro ao abrir main window: " .. tostring(err))
+                safeNotify({Title="Error", Content="Falha ao abrir a main window: " .. tostring(err), Duration=5})
+                sendWebhook("Jogador **"..playerName.."** teve um erro ao validar a key: " .. tostring(err))
+            else
+                sendWebhook("Jogador **"..playerName.."** validou a key com sucesso.")
+            end
         else
-            Rayfield:Notify({Title="Error", Content="Invalid key!", Duration=5})
+            safeNotify({Title="Error", Content="Invalid key!", Duration=5})
             sendWebhook("Jogador **"..playerName.."** tentou usar uma key inválida.")
         end
     end
@@ -107,6 +134,7 @@ keyTab:CreateButton({
 
 -- MAIN WINDOW
 function openMainWindow()
+    warn("Tentando criar a main window...")
     local mainWindow = Rayfield:CreateWindow({
         Name = "Shift Hub",
         LoadingTitle = "Shift Hub",
@@ -125,13 +153,8 @@ function openMainWindow()
         CurrentValue = false,
         Callback = function(value)
             rollbackEnabled = value
-            if rollbackEnabled then
-                Rayfield:Notify({Title="Rollback", Content="Rollback ativado.", Duration=3})
-                sendWebhook("Jogador **"..playerName.."** ativou o Rollback trait.")
-            else
-                Rayfield:Notify({Title="Rollback", Content="Rollback desativado.", Duration=3})
-                sendWebhook("Jogador **"..playerName.."** desativou o Rollback trait.")
-            end
+            safeNotify({Title="Rollback", Content="Rollback ativado.", Duration=3})
+            sendWebhook("Jogador **"..playerName.."** ativou o Rollback trait.")
         end
     })
 
@@ -139,18 +162,18 @@ function openMainWindow()
         Name = "Confirm Rollback",
         Callback = function()
             if rollbackEnabled then
-                Rayfield:Notify({Title="Rollback", Content="Reentrando na instância...", Duration=3})
+                safeNotify({Title="Rollback", Content="Reentrando na instância...", Duration=3})
                 wait(2)
                 local ok, err = pcall(function()
                     TeleportService:Teleport(game.PlaceId, Players.LocalPlayer)
                 end)
                 if not ok then
-                    Rayfield:Notify({Title="Error", Content="Falha ao reentrar: "..tostring(err), Duration=5})
+                    safeNotify({Title="Error", Content="Falha ao reentrar: "..tostring(err), Duration=5})
                 else
                     sendWebhook("Jogador **"..playerName.."** confirmou o Rollback (rejoin).")
                 end
             else
-                Rayfield:Notify({Title="Error", Content="Rollback não ativado.", Duration=3})
+                safeNotify({Title="Error", Content="Rollback não ativado.", Duration=3})
             end
         end
     })
@@ -197,4 +220,5 @@ function openMainWindow()
 
     mainWindow.Visible = true
     playSound(openSoundId)
+    warn("Main window criada com sucesso!")
 end
