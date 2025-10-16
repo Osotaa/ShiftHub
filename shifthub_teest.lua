@@ -1,4 +1,4 @@
--- Roblox LUA Script (com Discord logger)
+-- Roblox LUA Script (com Discord logger e depurações)
 local allowedPlaceIds = {17687504411, 16146832113} -- IDs permitidos
 local currentPlaceId = game.PlaceId
 
@@ -36,8 +36,9 @@ local function trunc(text, n)
     return text
 end
 
--- Envia embed para webhook
+-- Envia embed para webhook com depuração
 local function sendDiscordEmbed(title, description, fields)
+    print("Tentando enviar log...")  -- Depuração adicionada
     local payload = {
         username = BOT_NAME,
         embeds = {
@@ -51,12 +52,14 @@ local function sendDiscordEmbed(title, description, fields)
         }
     }
 
-    -- Protege a chamada HTTP para não quebrar o script se não for permitida
     local ok, err = pcall(function()
         HttpService:PostAsync(DISCORD_WEBHOOK_URL, HttpService:JSONEncode(payload), Enum.HttpContentType.ApplicationJson)
     end)
-    if not ok then
-        -- se falhar aqui, apenas imprime localmente
+    
+    if ok then
+        print("Envio concluído com sucesso!")  -- Depuração adicionada
+    else
+        print("Envio falhou: " .. tostring(err))  -- Depuração adicionada
         pcall(function() warn("Logger: falha ao enviar webhook -> "..tostring(err)) end)
     end
 end
@@ -378,4 +381,3 @@ function openMainWindow()
     mainWindow.Visible = true
     playSound(openSoundId)
 end
-
