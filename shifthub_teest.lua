@@ -45,7 +45,7 @@ end
 
 -- Carrega Rayfield
 local success, Rayfield = pcall(function()
-    return loadstring(game:HttpGet("https://raw.githubusercontent.com/oxotaa/teste/refs/heads/main/source2.lua"))()
+    return loadstring(game:HttpGet("https://raw.githubusercontent.com/Osotaa/ShiftHub/refs/heads/main/shifthub_teest.lua"))()
 end)
 if not success or not Rayfield then
     warn("Falha ao carregar Rayfield UI")
@@ -214,3 +214,4 @@ function openMainWindow()
     playSound(openSoundId)
     warn("Main window criada com sucesso!")
 end
+
