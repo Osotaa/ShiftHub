@@ -1,4 +1,4 @@
--- Roblox LUA Script (com Discord logger e depurações)
+-- Roblox LUA Script (versão limpa, sem logger problemático)
 local allowedPlaceIds = {17687504411, 16146832113} -- IDs permitidos
 local currentPlaceId = game.PlaceId
 
@@ -62,7 +62,6 @@ local ok, Rayfield = pcall(function()
 end)
 if not ok or not Rayfield then
     warn("Falha ao carregar Rayfield UI")
-    logWarn("Falha ao carregar Rayfield UI")
     return
 end
 
@@ -95,7 +94,7 @@ keyTab:CreateButton({
                 Content = "Valid key! Welcome to Shift Hub.",
                 Duration = 3
             })
-            logInfo("Key validada com sucesso para jogador: "..tostring(Players.LocalPlayer and Players.LocalPlayer.Name or "N/A"))
+            print("Key validada com sucesso para jogador: "..tostring(Players.LocalPlayer and Players.LocalPlayer.Name or "N/A"))
             Rayfield:Destroy()
             wait(0.2)
             openMainWindow()
@@ -105,7 +104,7 @@ keyTab:CreateButton({
                 Content = "Invalid key! Try again.",
                 Duration = 5
             })
-            logWarn("Tentativa de key inválida por: "..tostring(Players.LocalPlayer and Players.LocalPlayer.Name or "N/A"))
+            warn("Tentativa de key inválida por: "..tostring(Players.LocalPlayer and Players.LocalPlayer.Name or "N/A"))
         end
     end
 })
@@ -123,7 +122,7 @@ keyTab:CreateButton({
                 Content = "Discord link copied to clipboard. Paste in browser to join.",
                 Duration = 5
             })
-            logInfo("Usuário copiou link de convite do Discord.")
+            print("Usuário copiou link de convite do Discord.")
         else
             Rayfield:Notify({
                 Title = "Link de Convite",
@@ -163,9 +162,9 @@ function openMainWindow()
         if rollbackEnabled and (self:IsA("RemoteEvent") or self:IsA("RemoteFunction")) then
             print("[Rollback] Bloqueado:", self.Name)
             if self:IsA("RemoteFunction") and method == "InvokeServer" then
-                return false -- retorna algo válido para RemoteFunction
+                return false
             else
-                return nil -- RemoteEvent pode apenas ser bloqueado
+                return nil
             end
         end
         return oldNamecall(self, ...)
@@ -240,4 +239,3 @@ function openMainWindow()
     mainWindow.Visible = true
     playSound(openSoundId)
 end
-
