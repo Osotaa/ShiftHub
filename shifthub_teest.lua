@@ -1,5 +1,4 @@
 -- O erro anterior era a falta do '/verify' no final desta URL.
--- Ele deve apontar EXATAMENTE para a rota da API.
 local API_URL_BASE = "https://patchily-droopiest-herbert.ngrok-free.dev/verify" 
 
 local function getHwid()
@@ -9,7 +8,6 @@ local function getHwid()
     local system = getfenv().gethwid or getfenv().getip or getfenv().tostring
 
     if system then
-        -- Tenta obter HWID real, senão usa um fallback.
         local ok, result = pcall(system)
         if ok and result ~= nil then
             hwid = tostring(result)
@@ -17,30 +15,25 @@ local function getHwid()
     end
 
     if hwid == "" or hwid == "Unknown" then
-        -- Fallback: Gera um ID baseado no nome do usuário e um GUID
         local HttpService = game:GetService("HttpService")
         local computer_name = HttpService:GenerateGUID(false)
         hwid = user_name .. "_" .. computer_name
     end
 
-    return tostring(hwid):gsub(" ", "_"):sub(1, 64) -- Limita o tamanho do HWID
+    return tostring(hwid):gsub(" ", "_"):sub(1, 64)
 end
 
--- A Chave de Uso (Script Key) é definida aqui. O bot Discord preenche esta linha.
+-- Chave de Uso (Script Key)
 _G.key_to_check = "6RY5BYQJZXVKJA3U" 
 
 local user_hwid = getHwid()
 local script_key = _G.key_to_check
 
--- Monta a URL para o seu servidor Node.js
 local full_url = string.format("%s?key=%s&hwid=%s", API_URL_BASE, script_key, user_hwid)
 
--- Adicionei este print para debug, para você ter certeza da URL que está sendo enviada
 print("[ShiftHub Loader] URL Enviada para Validação: " .. full_url)
-
 print("[ShiftHub Loader] Contatando Servidor de Validação...")
 
--- Faz a requisição HTTP para o seu server.js
 local success, result = pcall(function()
     return game:HttpGet(full_url, true)
 end)
@@ -78,11 +71,13 @@ else
     error("[ShiftHub Loader] Resposta inesperada do Servidor. Tente novamente mais tarde. [C:500]")
 end
 
--- Se a validação foi um sucesso, carrega o script principal do GitHub.
+-- CORREÇÃO AQUI: Mudando a URL do GitHub para o formato RAW padrão
+local GITHUB_SCRIPT_URL = "https://raw.githubusercontent.com/Osotaa/ShiftHub/main/shifthub_teest.lua"
+
 if VALIDACAO_SUCESSO then
-    print("[ShiftHub Loader] Carregando script principal...")
-    loadstring(game:HttpGet("https://raw.githubusercontent.com/Osotaa/ShiftHub/refs/heads/main/shifthub_teest.lua", true))()
+    print("[ShiftHub Loader] Carregando script principal de: " .. GITHUB_SCRIPT_URL)
+    -- Carrega e executa o script final
+    loadstring(game:HttpGet(GITHUB_SCRIPT_URL, true))()
 else
     warn("[ShiftHub Loader] Script principal não carregado.")
 end
-
