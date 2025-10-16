@@ -1,5 +1,6 @@
--- IMPORTANTE: ALTERE 'http://localhost:3000/verify' PARA O IP PÚBLICO DO SEU SERVIDOR!
-local API_URL_BASE = "https://patchily-droopiest-herbert.ngrok-free.dev/verify"
+-- O erro anterior era a falta do '/verify' no final desta URL.
+-- Ele deve apontar EXATAMENTE para a rota da API.
+local API_URL_BASE = "https://patchily-droopiest-herbert.ngrok-free.dev/verify" 
 
 local function getHwid()
     local hwid = ""
@@ -33,6 +34,9 @@ local script_key = _G.key_to_check
 
 -- Monta a URL para o seu servidor Node.js
 local full_url = string.format("%s?key=%s&hwid=%s", API_URL_BASE, script_key, user_hwid)
+
+-- Adicionei este print para debug, para você ter certeza da URL que está sendo enviada
+print("[ShiftHub Loader] URL Enviada para Validação: " .. full_url)
 
 print("[ShiftHub Loader] Contatando Servidor de Validação...")
 
@@ -81,5 +85,3 @@ if VALIDACAO_SUCESSO then
 else
     warn("[ShiftHub Loader] Script principal não carregado.")
 end
-
-
