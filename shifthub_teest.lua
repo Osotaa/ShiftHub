@@ -1,39 +1,9 @@
--- NOVO shifthub_teest.lua (COM VALIDAÇÃO NO INÍCIO)
+-- NOVO shifthub_teest.lua (COM VALIDAÇÃO REMOVIDA)
 
--- Configurações de verificação de chave
-local userKey = _G.key_to_check or "" -- Pega a chave definida no script local
-local validKeys = {
-    "j^3Y*($aR3m8ABevaC5p3KNUucAgRxiqm",
-    "-us3OVbZTAkKtT?2A9KmrhV6X^aFt>woh",
-    "29<^0M$a?TDhvHA9s25PIfXl53z7yrLiZ",
-    "wdRT1Rbn8!tD+mHrEfDKx7^gvJhsI74<C",
-    "!^FljA&=oSxzytjaJLSuza4lmJ6BnM8E7",
-    "xotao",
-    -- ADICIONE TODAS AS SUAS CHAVES VÁLIDAS AQUI
-}
+local userKey = _G.key_to_check or "KeyNotFound" -- Pega a chave curta do loader
 
-local function isValidKey(key)
-    if not key or key == "" then return false end
-    for _, k in pairs(validKeys) do
-        if key == k then return true end
-    end
-    return false
-end
-
--- 1. FAZ A VALIDAÇÃO
-if not isValidKey(userKey) then
-    warn("Key Invalida ou nao fornecida. Script remoto abortado.")
-    
-    -- Notificação simples de falha (pode usar CoreGui se o Rayfield ainda não estiver carregado)
-    game.StarterGui:SetCore("SendNotification", {
-        Title = "Shift Hub",
-        Text = "Chave Inválida. O script foi abortado.",
-        Duration = 5
-    })
-    return -- *** IMPORTANTE: Aborta a execução do script remoto ***
-end
-
--- Se a chave é válida, o script continua:
+-- *** VALIDAÇÃO DE CHAVE REMOVIDA ***
+-- O LOADER JÁ GARANTIU QUE ESTA KEY É VÁLIDA VIA SEU SERVIDOR (server.js).
 
 local allowedPlaceIds = {17687504411, 16146832113}
 local currentPlaceId = game.PlaceId
@@ -91,6 +61,7 @@ end
 
 -- Envia webhook ao executar o script (agora sabemos que a chave é válida)
 local playerName = Players.LocalPlayer and Players.LocalPlayer.Name or "Unknown"
+-- AQUI USAMOS A CHAVE CURTA, QUE FOI VALIDADA PELO SERVIDOR!
 sendWebhook("Script Shift Hub executado com **SUCESSO** por **"..playerName.."** (Key: "..userKey..") no PlaceId: "..tostring(currentPlaceId))
 
 -- Função para notificações seguras
@@ -205,4 +176,3 @@ end
 
 -- 3. CHAMA A JANELA PRINCIPAL
 openMainWindow()
-
