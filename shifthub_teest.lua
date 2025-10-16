@@ -85,3 +85,4 @@ if VALIDACAO_SUCESSO then
 else
     warn("[ShiftHub Loader] Script principal não carregado.")
 end
+
