@@ -3,30 +3,32 @@
     ATENÇÃO: CONFIGURAÇÕES DE AUTENTICAÇÃO
     -------------------------------------------
     1. Substitua o valor da variável 'API_BASE_URL' pelo link do seu ngrok.
-    2. A variável 'key' deve ser preenchida pelo método de input do seu executor.
+    2. O script agora tenta obter a chave automaticamente do servidor
+       usando o Roblox ID do jogador.
 ]]
 
-local API_BASE_URL = "https://patchily-droopiest-herbert.ngrok-free.dev/" -- <--- COLOQUE SEU LINK DO NGROK AQUI (Ex: https://patchily-droopiest-herbert.ngrok-free.dev)
-local key = nil -- A chave será solicitada pelo prompt abaixo
+local API_BASE_URL = "https://patchily-droopiest-herbert.ngrok-free.dev/" -- <--- COLOQUE SEU LINK DO NGROK AQUI
+local key = nil -- A chave será obtida automaticamente
 
 -- Variáveis do Roblox
 local UserInputService = game:GetService("UserInputService")
 local TeleportService = game:GetService("TeleportService")
 local Player = game.Players.LocalPlayer
 
--- Gera um HWID único para o usuário, combinando o UserID com o nome.
+-- Gera o HWID único para o usuário, combinando o UserID com o nome.
 local robloxId = Player.UserId
 local hwid = tostring(robloxId) .. "_" .. Player.Name:gsub("%s+", ""):lower()
 
 
 -- Função que carrega a GUI (não será mais chamada automaticamente)
-function openMainWindow()
+function openMainWindow(authKey)
     local Rayfield2 = loadstring(game:HttpGet('https://raw.githubusercontent.com/oxotaa/teste/refs/heads/main/source2.lua'))()
 
     local mainWindow = Rayfield2:CreateWindow({
         Name = "Shift Hub",
         LoadingTitle = "Shift Hub",
-        LoadingSubtitle = "Autenticação OK!",
+        -- Exibe a chave que foi autenticada
+        LoadingSubtitle = "Shift Hub" .. (authKey or "N/A"),
         ConfigurationSaving = { Enabled = false },
         KeySystem = false
     })
@@ -137,63 +139,99 @@ end
 -- INÍCIO DA LÓGICA DE AUTENTICAÇÃO
 -- --------------------------------------------------------------------------------------
 
--- Verifica se está no Place ID correto antes de tudo
-local allowedPlaceIds = {17687504411, 16146832113}
-local currentPlaceId = game.PlaceId
-local isAllowed = false
-
-for _, id in pairs(allowedPlaceIds) do
-    if currentPlaceId == id then
-        isAllowed = true
-        break
+-- 1. FUNÇÃO AUXILIAR PARA REQUISIÇÕES
+local function makeApiRequest(endpoint, params)
+    -- Remove a barra final da API_BASE_URL se existir, para evitar barras duplas na URL.
+    local clean_base_url = API_BASE_URL:gsub("/$", "") 
+    local query_string = ""
+    for k, v in pairs(params) do
+        query_string = query_string .. string.format("%s=%s&", k, v)
     end
-end
-
-if not isAllowed then
-    warn("Script only works in All Star Tower Defense And Anime Vanguards.")
-    return
-end
-
--- 1. SOLICITA A CHAVE AO USUÁRIO
--- Nota: 'PromptKey' é uma função comum em exploiters para input de chave. Se não funcionar,
--- você deve usar a função de input fornecida pelo seu executor (Ex: loadstring(game:HttpGet('...')))
-key = game:GetService("StarterGui"):GetCore("PromptKey", "Shift Hub - Digite sua Chave")
-if not key or key == "" then
-    warn("Autenticação cancelada. Chave não fornecida.")
-    return
-end
-
--- 2. FUNÇÃO DE VERIFICAÇÃO NA API
-local function verifyAuth(userKey, userHwid)
-    print("Iniciando verificação na API...")
-    local url = string.format("%s/verify?key=%s&hwid=%s", API_BASE_URL, userKey, userHwid)
+    query_string = query_string:sub(1, #query_string - 1) -- Remove o & final
     
-    -- Faz a requisição GET na API (síncrono, aguarda a resposta)
+    local url = string.format("%s/%s?%s", clean_base_url, endpoint, query_string)
+    
+    -- print("Iniciando requisição na API: " .. url) -- LOG REMOVIDO
+    
     local success, response = pcall(function()
         return game:HttpGet(url, true)
     end)
 
     if not success then
-        warn("Erro na comunicação com a API: " .. tostring(response))
+        warn("Erro na comunicação com a API.") -- MENSAGEM SIMPLIFICADA
         return "erro_comunicacao"
     end
 
     return response
 end
 
--- 3. EXECUTA A VERIFICAÇÃO E DECIDE SE CARREGA A GUI
-local authResponse = verifyAuth(key, hwid)
+-- 2. TENTA OBTER A KEY AUTOMATICAMENTE PELO ROBLOX ID
+local function getAutomaticKey()
+    -- print("Tentando obter chave automaticamente pelo Roblox ID: " .. robloxId) -- LOG REMOVIDO
+    local response = makeApiRequest("get-key-by-roblox", { robloxId = robloxId })
 
-if authResponse == "hwid_valido" or authResponse == "hwid_registrado" then
-    print("Autenticação bem-sucedida! Carregando GUI...")
-    openMainWindow()
-elseif authResponse == "script_key_invalida" then
-    warn("A chave fornecida é inválida.")
-elseif authResponse == "hwid_diferente" then
-    warn("HWID diferente. Sua chave está vinculada a outro dispositivo.")
-else
-    warn("Falha na autenticação. Resposta da API: " .. authResponse)
+    if response == "no_key_found" then
+        warn("Roblox ID não está vinculado a nenhuma chave. Autenticação falhou.") -- MENSAGEM SIMPLIFICADA
+        return nil
+    elseif response == "erro_comunicacao" or response == "erro_parametros" then
+        return nil
+    else
+        -- print("Chave automática encontrada: " .. response) -- LOG REMOVIDO
+        return response -- A chave (scriptKey)
+    end
 end
 
--- O script termina aqui se a autenticação falhar
+-- 3. FUNÇÃO DE VERIFICAÇÃO NA API
+local function verifyAuth(userKey, userHwid)
+    -- print("Iniciando verificação final da chave e HWID...") -- LOG REMOVIDO
+    return makeApiRequest("verify", { key = userKey, hwid = userHwid })
+end
 
+-- 4. INÍCIO DO PROCESSO PRINCIPAL
+local function runAuthentication()
+    print("Shift Hub by osotaa") -- Mensagem 1
+    
+    -- Verifica se está no Place ID correto antes de tudo
+    local allowedPlaceIds = {17687504411, 16146832113}
+    local currentPlaceId = game.PlaceId
+    local isAllowed = false
+
+    for _, id in pairs(allowedPlaceIds) do
+        if currentPlaceId == id then
+            isAllowed = true
+            break
+        end
+    end
+
+    if not isAllowed then
+        warn("Script only works in All Star Tower Defense And Anime Vanguards.")
+        return
+    end
+
+    print("Iniciando verificação de licença...") -- Mensagem 2 (Status)
+
+    -- 4.1 Tenta obter a chave automaticamente
+    local automaticKey = getAutomaticKey()
+
+    if not automaticKey then
+        warn("Vincule seu Roblox ID à key no bot Discord!")
+        return
+    end
+
+    -- 4.2 Se a chave foi obtida, faz a verificação final
+    local authResponse = verifyAuth(automaticKey, hwid)
+    key = automaticKey -- Define a chave globalmente para a GUI
+
+    if authResponse == "hwid_valido" or authResponse == "hwid_registrado" then
+        print("Confirmado, iniciando Shift Hub.") -- Mensagem 3 (Sucesso)
+        openMainWindow(key)
+    elseif authResponse == "script_key_invalida" then
+        warn("Licença inválida.")
+    elseif authResponse == "hwid_diferente" then
+        warn("HWID diferente. Sua chave está vinculada a outro dispositivo. Tente reiniciar.")
+    else
+        warn("Falha na autenticação.")
+    end
+end
+
+runAuthentication()
