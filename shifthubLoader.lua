@@ -6,7 +6,7 @@
     2. A variável 'key' deve ser preenchida pelo método de input do seu executor.
 ]]
 
-local API_BASE_URL = "SEU_LINK_NGROK_AQUI" -- <--- COLOQUE SEU LINK DO NGROK AQUI (Ex: https://patchily-droopiest-herbert.ngrok-free.dev)
+local API_BASE_URL = "https://patchily-droopiest-herbert.ngrok-free.dev/" -- <--- COLOQUE SEU LINK DO NGROK AQUI (Ex: https://patchily-droopiest-herbert.ngrok-free.dev)
 local key = nil -- A chave será solicitada pelo prompt abaixo
 
 -- Variáveis do Roblox
@@ -196,3 +196,4 @@ else
 end
 
 -- O script termina aqui se a autenticação falhar
+
