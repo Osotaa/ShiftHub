@@ -82,3 +82,4 @@ else
     warn("[ShiftHub Loader] Script principal não carregado.")
 end
 
+
