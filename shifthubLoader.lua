@@ -50,40 +50,38 @@ local function getKeyFromUser()
         local ok, result = pcall(function()
             return gettextinput("ShiftHub Key", "Insira sua Key de 16 dígitos:")
         end)
-        if ok and result then
-            key = result
+        if ok and result and result ~= "" and result ~= "SUA_KEY_AQUI_16_DIGITOS" then
+            key = trim(result)
         end
     end
     
-    -- Método 2: Synapse X Input
-    if not key and syn and syn.request then
-        local ok, result = pcall(function()
-            return syn.request({
-                Url = "https://httpbin.org/delay/0",
-                Method = "GET",
-                Headers = {["User-Key"] = "Insira sua Key aqui"}
-            })
-        end)
-    end
-    
-    -- Método 3: setclipboard + notificação (fallback universal)
-    if not key then
+    -- Método 2: Fallback para Clipboard
+    if not key and setclipboard and getclipboard then
         pcall(function()
             game.StarterGui:SetCore("SendNotification", {
                 Title = "ShiftHub Loader",
-                Text = "Cole sua Key no console (F9) e pressione Enter",
+                Text = "Copie sua key e pressione Ctrl+V no console",
                 Duration = 10
             })
         end)
         
         print("=================================")
-        print("COLE SUA KEY ABAIXO E PRESSIONE ENTER:")
+        print("COPIE SUA KEY E COLE AQUI:")
+        print("Exemplo: PQUVUDHXUJSYFJMF")
         print("=================================")
         
-        -- Aguarda input do console (limitado, mas funcional)
-        key = "TEMP_KEY_PLACEHOLDER" -- Você precisará substituir manualmente ou usar outro método
+        wait(5) -- Aguarda 5 segundos
         
-        warn("⚠️ AVISO: Método de input limitado. Considere usar um executor com suporte a 'gettextinput'")
+        local ok, clipboard = pcall(getclipboard)
+        if ok and clipboard and #clipboard >= 16 then
+            key = trim(clipboard)
+        end
+    end
+    
+    -- Método 3: Key fixa (APENAS PARA DEBUG - REMOVA EM PRODUÇÃO!)
+    if not key then
+        warn("⚠️ USANDO KEY DE DEBUG! Remova isso em produção!")
+        key = "PQUVUDHXUJSYFJMF" -- Sua key de teste
     end
     
     return key
@@ -92,7 +90,11 @@ end
 -- === SOLICITA A KEY AO USUÁRIO ===
 print("[ShiftHub Loader] Iniciando validação...")
 
-local script_key = getKeyFromUser()
+-- OPÇÃO 1: Input do usuário (requer executor com suporte)
+-- local script_key = getKeyFromUser()
+
+-- OPÇÃO 2: Key fixa para teste (RECOMENDADO PARA DEBUG)
+local script_key = "PQUVUDHXUJSYFJMF" -- ✅ Sua key real do servidor
 
 -- DEBUG: Mostra informações sobre a key
 print("[DEBUG] Key recebida: " .. tostring(script_key))
