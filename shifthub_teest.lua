@@ -86,7 +86,7 @@ else
 end
 
 -- CORREÇÃO AQUI: Mudando a URL do GitHub para o formato RAW padrão
-local GITHUB_SCRIPT_URL = "https://raw.githubusercontent.com/Osotaa/ShiftHub/main/shifthub_teest.lua"
+local GITHUB_SCRIPT_URL = "https://raw.githubusercontent.com/Osotaa/ShiftHub/refs/heads/main/ShiftHubScript"
 
 if VALIDACAO_SUCESSO then
     -- === MODIFICAÇÃO 3: ADICIONANDO A FLAG GLOBAL ===
@@ -98,3 +98,4 @@ if VALIDACAO_SUCESSO then
 else
     warn("[ShiftHub Loader] Script principal não carregado.")
 end
+
