@@ -1,35 +1,38 @@
--- Allowed Place IDs
-local allowedPlaceIds = {17687504411, 16146832113}
-local currentPlaceId = game.PlaceId
-local isAllowed = false
+--[[ 
+    -------------------------------------------
+    ATENÇÃO: CONFIGURAÇÕES DE AUTENTICAÇÃO
+    -------------------------------------------
+    1. Substitua o valor da variável 'API_BASE_URL' pelo link do seu ngrok.
+    2. A variável 'key' deve ser preenchida pelo método de input do seu executor.
+]]
 
-for _, id in pairs(allowedPlaceIds) do
-    if currentPlaceId == id then
-        isAllowed = true
-        break
-    end
-end
+local API_BASE_URL = "SEU_LINK_NGROK_AQUI" -- <--- COLOQUE SEU LINK DO NGROK AQUI (Ex: https://patchily-droopiest-herbert.ngrok-free.dev)
+local key = nil -- A chave será solicitada pelo prompt abaixo
 
-if not isAllowed then
-    warn("Script only works in All Star Tower Defense And Anime Vanguards.")
-    return
-end
-
+-- Variáveis do Roblox
 local UserInputService = game:GetService("UserInputService")
 local TeleportService = game:GetService("TeleportService")
+local Player = game.Players.LocalPlayer
 
--- Função principal da GUI
+-- Gera um HWID único para o usuário, combinando o UserID com o nome.
+local robloxId = Player.UserId
+local hwid = tostring(robloxId) .. "_" .. Player.Name:gsub("%s+", ""):lower()
+
+
+-- Função que carrega a GUI (não será mais chamada automaticamente)
 function openMainWindow()
     local Rayfield2 = loadstring(game:HttpGet('https://raw.githubusercontent.com/oxotaa/teste/refs/heads/main/source2.lua'))()
 
     local mainWindow = Rayfield2:CreateWindow({
         Name = "Shift Hub",
         LoadingTitle = "Shift Hub",
-        LoadingSubtitle = "",
+        LoadingSubtitle = "Autenticação OK!",
         ConfigurationSaving = { Enabled = false },
         KeySystem = false
     })
 
+    -- O RESTO DO SEU CÓDIGO DA GUI VEM AQUI
+    
     -- Main Tab
     local mainTab = mainWindow:CreateTab("🏠 Main")
     mainTab:CreateSection("Welcome to Shift Hub!")
@@ -130,5 +133,66 @@ function openMainWindow()
     mainWindow.Visible = true
 end
 
--- Executa GUI
-openMainWindow()
+-- --------------------------------------------------------------------------------------
+-- INÍCIO DA LÓGICA DE AUTENTICAÇÃO
+-- --------------------------------------------------------------------------------------
+
+-- Verifica se está no Place ID correto antes de tudo
+local allowedPlaceIds = {17687504411, 16146832113}
+local currentPlaceId = game.PlaceId
+local isAllowed = false
+
+for _, id in pairs(allowedPlaceIds) do
+    if currentPlaceId == id then
+        isAllowed = true
+        break
+    end
+end
+
+if not isAllowed then
+    warn("Script only works in All Star Tower Defense And Anime Vanguards.")
+    return
+end
+
+-- 1. SOLICITA A CHAVE AO USUÁRIO
+-- Nota: 'PromptKey' é uma função comum em exploiters para input de chave. Se não funcionar,
+-- você deve usar a função de input fornecida pelo seu executor (Ex: loadstring(game:HttpGet('...')))
+key = game:GetService("StarterGui"):GetCore("PromptKey", "Shift Hub - Digite sua Chave")
+if not key or key == "" then
+    warn("Autenticação cancelada. Chave não fornecida.")
+    return
+end
+
+-- 2. FUNÇÃO DE VERIFICAÇÃO NA API
+local function verifyAuth(userKey, userHwid)
+    print("Iniciando verificação na API...")
+    local url = string.format("%s/verify?key=%s&hwid=%s", API_BASE_URL, userKey, userHwid)
+    
+    -- Faz a requisição GET na API (síncrono, aguarda a resposta)
+    local success, response = pcall(function()
+        return game:HttpGet(url, true)
+    end)
+
+    if not success then
+        warn("Erro na comunicação com a API: " .. tostring(response))
+        return "erro_comunicacao"
+    end
+
+    return response
+end
+
+-- 3. EXECUTA A VERIFICAÇÃO E DECIDE SE CARREGA A GUI
+local authResponse = verifyAuth(key, hwid)
+
+if authResponse == "hwid_valido" or authResponse == "hwid_registrado" then
+    print("Autenticação bem-sucedida! Carregando GUI...")
+    openMainWindow()
+elseif authResponse == "script_key_invalida" then
+    warn("A chave fornecida é inválida.")
+elseif authResponse == "hwid_diferente" then
+    warn("HWID diferente. Sua chave está vinculada a outro dispositivo.")
+else
+    warn("Falha na autenticação. Resposta da API: " .. authResponse)
+end
+
+-- O script termina aqui se a autenticação falhar
