@@ -84,7 +84,7 @@ else
     error("[ShiftHub Loader] Resposta inesperada do Servidor. Tente novamente mais tarde. [C:500]")
 end
 
-local GITHUB_SCRIPT_URL = "https://raw.githubusercontent.com/Osotaa/ShiftHub/main/ShiftHubScript.lua" -- Verifique se este link está correto!
+local GITHUB_SCRIPT_URL = "https://raw.githubusercontent.com/Osotaa/ShiftHub/refs/heads/main/ShiftHubScript.lua" -- Verifique se este link está correto!
 
 if VALIDACAO_SUCESSO then
     _G.ShiftHub_Validated = true
@@ -94,5 +94,6 @@ if VALIDACAO_SUCESSO then
 else
     warn("[ShiftHub Loader] Script principal não carregado.")
 end
+
 
 
