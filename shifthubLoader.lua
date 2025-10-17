@@ -94,7 +94,7 @@ print("[ShiftHub Loader] Iniciando validação...")
 -- local script_key = getKeyFromUser()
 
 -- OPÇÃO 2: Key fixa para teste (RECOMENDADO PARA DEBUG)
-local script_key = "PQUVUDHXUJSYFJMF" -- ✅ Sua key real do servidor
+local script_key = "MXSLIDUQORUNDYJA" -- ✅ Sua key real do servidor
 
 -- DEBUG: Mostra informações sobre a key
 print("[DEBUG] Key recebida: " .. tostring(script_key))
@@ -188,3 +188,4 @@ if VALIDACAO_SUCESSO then
 else
     warn("[ShiftHub Loader] Script principal não carregado.")
 end
+
