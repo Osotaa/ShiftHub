@@ -28,7 +28,7 @@ function openMainWindow(authKey)
         Name = "Shift Hub",
         LoadingTitle = "Shift Hub",
         -- Exibe a chave que foi autenticada
-        LoadingSubtitle = "Shift Hub" .. (authKey or "N/A"),
+        LoadingSubtitle = "Shift Hub" .. ("N/A"),
         ConfigurationSaving = { Enabled = false },
         KeySystem = false
     })
@@ -235,3 +235,4 @@ local function runAuthentication()
 end
 
 runAuthentication()
+
