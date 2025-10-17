@@ -1,1 +1,11 @@
+ 1. VERIFICAÇÃO DE VALIDAÇÃO
+if not _G.ShiftHub_Validated then
+    -- Impede a execução direta, pois a validação não ocorreu no Loader.
+    error("Erro: Acesso não autorizado. Execute o Loader para iniciar.")
+    return -- Para a execução
+end
+
+-- 2. SEÇÃO DE CÓDIGO DO HUB/GUI
+-- Coloque todo o código real da sua GUI e das funcionalidades do seu Hub abaixo desta linha.
+print("[ShiftHub] Script principal carregado com sucesso. Iniciando GUI...")
 
