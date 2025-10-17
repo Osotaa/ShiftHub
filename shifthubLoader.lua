@@ -92,7 +92,15 @@ end
 -- === SOLICITA A KEY AO USUÁRIO ===
 print("[ShiftHub Loader] Iniciando validação...")
 
-local script_key = "SUA_KEY_AQUI_16_DIGITOS"
+local script_key = getKeyFromUser()
+
+-- DEBUG: Mostra informações sobre a key
+print("[DEBUG] Key recebida: " .. tostring(script_key))
+print("[DEBUG] Tamanho da key: " .. tostring(#script_key))
+print("[DEBUG] Key após trim: " .. trim(script_key))
+
+-- Remove espaços e quebras de linha
+script_key = trim(script_key)
 
 if not script_key or #script_key < 16 then
     error("[ShiftHub Loader] Acesso Negado: Key Inválida ou não inserida. [C:400]")
@@ -106,6 +114,7 @@ print("[ShiftHub Loader] HWID Detectado: " .. user_hwid)
 
 -- === MONTA A URL DE VALIDAÇÃO ===
 local full_url = string.format("%s?key=%s&hwid=%s", API_URL_BASE, script_key, user_hwid)
+print("[ShiftHub Loader] URL Completa: " .. full_url)
 print("[ShiftHub Loader] Contatando Servidor de Validação...")
 
 -- === FAZ A REQUISIÇÃO HTTP ===
@@ -119,7 +128,9 @@ end
 
 -- === PROCESSA A RESPOSTA ===
 local response = trim(result):lower()
-print("[ShiftHub Loader] Resposta do Servidor: " .. response)
+print("[ShiftHub Loader] Resposta do Servidor: '" .. response .. "'")
+print("[DEBUG] Resposta bruta (sem trim): '" .. result .. "'")
+print("[DEBUG] Tamanho da resposta: " .. #response)
 
 local VALIDACAO_SUCESSO = false
 
@@ -172,4 +183,3 @@ if VALIDACAO_SUCESSO then
 else
     warn("[ShiftHub Loader] Script principal não carregado.")
 end
-
