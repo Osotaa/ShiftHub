@@ -1,48 +1,33 @@
---[[ 
-    -------------------------------------------
-    ATENÇÃO: CONFIGURAÇÕES DE AUTENTICAÇÃO
-    -------------------------------------------
-    1. Substitua o valor da variável 'API_BASE_URL' pelo link do seu ngrok.
-    2. O script agora tenta obter a chave automaticamente do servidor
-       usando o Roblox ID do jogador.
-]]
+local API_BASE_URL = "https://patchily-droopiest-herbert.ngrok-free.dev/"
+local key = nil
 
-local API_BASE_URL = "https://patchily-droopiest-herbert.ngrok-free.dev/" -- <--- COLOQUE SEU LINK DO NGROK AQUI
-local key = nil -- A chave será obtida automaticamente
-
--- Variáveis do Roblox
 local UserInputService = game:GetService("UserInputService")
 local TeleportService = game:GetService("TeleportService")
 local Player = game.Players.LocalPlayer
 
--- Gera o HWID único para o usuário, combinando o UserID com o nome.
 local robloxId = Player.UserId
 local hwid = tostring(robloxId) .. "_" .. Player.Name:gsub("%s+", ""):lower()
 
 
--- Função que carrega a GUI (não será mais chamada automaticamente)
 function openMainWindow(authKey)
     local Rayfield2 = loadstring(game:HttpGet('https://raw.githubusercontent.com/oxotaa/teste/refs/heads/main/source2.lua'))()
 
     local mainWindow = Rayfield2:CreateWindow({
         Name = "Shift Hub",
         LoadingTitle = "Shift Hub",             -- Título principal
-        LoadingSubtitle = "By osotaa",           -- Subtítulo conforme solicitado
+        LoadingSubtitle = "By osotaa",           -- Subtítulo
         ConfigurationSaving = { Enabled = false },
         KeySystem = false
     })
 
-    -- O RESTO DO SEU CÓDIGO DA GUI VEM AQUI
-    
-    -- Main Tab
+
+
     local mainTab = mainWindow:CreateTab("🏠 Main")
     mainTab:CreateSection("Welcome to Shift Hub!")
 
-    -- Rollback Trait seguro
     local rollbackEnabled = false
     local protectedRemotes = {"TraitChange", "UpgradeUnit", "SummonUnit"}
 
-    -- Hook seguro do metatable
     local mt = getrawmetatable(game)
     setreadonly(mt, false)
     local oldNamecall = mt.__namecall
@@ -50,9 +35,7 @@ function openMainWindow(authKey)
     mt.__namecall = newcclosure(function(self, ...)
         local method = getnamecallmethod()
         
-        -- Só interferir se rollback estiver ativado
         if rollbackEnabled then
-            -- Bloquear apenas remotes que estão na lista
             if table.find(protectedRemotes, self.Name) then
                 if self:IsA("RemoteFunction") and method == "InvokeServer" then
                     return false -- Return válido sem quebrar o jogo
@@ -65,7 +48,6 @@ function openMainWindow(authKey)
         return oldNamecall(self, ...)
     end)
 
-    -- Toggle Rollback
     mainTab:CreateToggle({
         Name = "Rollback Trait",
         CurrentValue = false,
@@ -137,10 +119,7 @@ end
 -- --------------------------------------------------------------------------------------
 -- INÍCIO DA LÓGICA DE AUTENTICAÇÃO
 -- --------------------------------------------------------------------------------------
-
--- 1. FUNÇÃO AUXILIAR PARA REQUISIÇÕES
 local function makeApiRequest(endpoint, params)
-    -- Remove a barra final da API_BASE_URL se existir, para evitar barras duplas na URL.
     local clean_base_url = API_BASE_URL:gsub("/$", "") 
     local query_string = ""
     for k, v in pairs(params) do
@@ -150,47 +129,40 @@ local function makeApiRequest(endpoint, params)
     
     local url = string.format("%s/%s?%s", clean_base_url, endpoint, query_string)
     
-    -- print("Iniciando requisição na API: " .. url) -- LOG REMOVIDO
     
     local success, response = pcall(function()
         return game:HttpGet(url, true)
     end)
 
     if not success then
-        warn("Erro na comunicação com a API.") -- MENSAGEM SIMPLIFICADA
+        warn("Erro na comunicação com a API.")
         return "erro_comunicacao"
     end
 
     return response
 end
 
--- 2. TENTA OBTER A KEY AUTOMATICAMENTE PELO ROBLOX ID
 local function getAutomaticKey()
-    -- print("Tentando obter chave automaticamente pelo Roblox ID: " .. robloxId) -- LOG REMOVIDO
     local response = makeApiRequest("get-key-by-roblox", { robloxId = robloxId })
 
     if response == "no_key_found" then
-        warn("Roblox ID não está vinculado a nenhuma chave. Autenticação falhou.") -- MENSAGEM SIMPLIFICADA
+        warn("Roblox ID não está vinculado a nenhuma chave. Autenticação falhou.") 
         return nil
     elseif response == "erro_comunicacao" or response == "erro_parametros" then
         return nil
     else
-        -- print("Chave automática encontrada: " .. response) -- LOG REMOVIDO
+
         return response -- A chave (scriptKey)
     end
 end
 
--- 3. FUNÇÃO DE VERIFICAÇÃO NA API
 local function verifyAuth(userKey, userHwid)
-    -- print("Iniciando verificação final da chave e HWID...") -- LOG REMOVIDO
     return makeApiRequest("verify", { key = userKey, hwid = userHwid })
 end
 
--- 4. INÍCIO DO PROCESSO PRINCIPAL
 local function runAuthentication()
     print("Shift Hub by osotaa") -- Mensagem 1
     
-    -- Verifica se está no Place ID correto antes de tudo
     local allowedPlaceIds = {17687504411, 16146832113}
     local currentPlaceId = game.PlaceId
     local isAllowed = false
@@ -209,16 +181,13 @@ local function runAuthentication()
 
     print("Iniciando verificação de licença...") -- Mensagem 2 (Status)
 
-    -- 4.1 Tenta obter a chave automaticamente
     local automaticKey = getAutomaticKey()
 
     if not automaticKey then
-        -- MENSAGEM AJUSTADA
         warn("Vincule seu Roblox ID à key no bot Discord!")
         return
     end
 
-    -- 4.2 Se a chave foi obtida, faz a verificação final
     local authResponse = verifyAuth(automaticKey, hwid)
     key = automaticKey -- Define a chave globalmente para a GUI
 
@@ -235,3 +204,4 @@ local function runAuthentication()
 end
 
 runAuthentication()
+
