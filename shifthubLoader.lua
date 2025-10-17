@@ -1,43 +1,25 @@
--- SHIFTHUB AUTO LOADER V2 (Autenticação automática por Discord/Roblox ID)
-local API_URL_BASE = "https://patchily-droopiest-herbert.ngrok-free.dev"
-local API_SECRET = "Xota321"
+-- SHIFTHUB AUTO LOADER V2 (com GUI Rayfield integrada)
+print("Iniciando Shift Hub by Osotaa")
 
 -- === CONFIGURAÇÕES ===
-local DISCORD_ID = nil -- Será preenchido automaticamente se você usar o sistema de vinculação
-local DEBUG_MODE = true -- Ative para ver logs detalhados
+local API_URL_BASE = "https://patchily-droopiest-herbert.ngrok-free.dev"
+local API_SECRET = "Xota321"
+local DISCORD_ID = nil
 
--- === FUNÇÃO TRIM ===
+-- === FUNÇÕES AUXILIARES ===
 local function trim(s)
     if not s then return "" end
-    s = s:gsub("^%s+", "")
-    return s:gsub("%s+$", "")
+    return s:gsub("^%s+", ""):gsub("%s+$", "")
 end
 
--- === FUNÇÃO DE LOG ===
-local function log(message, level)
-    level = level or "INFO"
-    local prefix = "[ShiftHub AutoLoader]"
-    if level == "ERROR" then
-        warn(prefix .. " ❌ " .. message)
-    elseif level == "SUCCESS" then
-        print(prefix .. " ✅ " .. message)
-    elseif level == "DEBUG" and DEBUG_MODE then
-        print(prefix .. " 🔍 " .. message)
-    else
-        print(prefix .. " ℹ️ " .. message)
-    end
-end
-
--- === FUNÇÃO PARA OBTER HWID ===
 local function getHwid()
     local hwid = ""
     local hwid_functions = {gethwid, get_hwid}
     for _, func in ipairs(hwid_functions) do
         if func then
             local ok, result = pcall(func)
-            if ok and result ~= nil and result ~= "" then
+            if ok and result and result ~= "" then
                 hwid = tostring(result)
-                log("HWID obtido via " .. tostring(func), "DEBUG")
                 break
             end
         end
@@ -48,188 +30,167 @@ local function getHwid()
         local user_name = Players.LocalPlayer.Name
         local computer_name = HttpService:GenerateGUID(false)
         hwid = user_name .. "_" .. computer_name
-        log("HWID gerado via fallback", "DEBUG")
     end
     return tostring(hwid):gsub(" ", "_"):sub(1, 64)
 end
 
--- === GET KEY BY ROBLOX ID (COM SECRET) ===
 local function getKeyByRobloxId()
     local Players = game:GetService("Players")
     local userId = tostring(Players.LocalPlayer.UserId)
-    log("Buscando key via Roblox ID: " .. userId, "DEBUG")
-
-    local url = string.format("%s/get-key-by-roblox?robloxId=%s&secret=%s", API_URL_BASE, tostring(userId), tostring(API_SECRET))
-    local success, result = pcall(function()
-        return game:HttpGet(url, true)
-    end)
-
-    if success and result and result ~= "no_key_found" then
-        local key = trim(result)
-        if #key == 16 then
-            log("Key encontrada via Roblox ID!", "SUCCESS")
-            return key
-        end
-    end
-
-    log("Nenhuma key encontrada para Roblox ID: " .. userId, "DEBUG")
-    return nil
-end
-
--- === GET KEY BY DISCORD ID (COM SECRET opcional se desejar) ===
-local function getKeyByDiscordId(discordId)
-    if not discordId then return nil end
-    log("Buscando key via Discord ID: " .. discordId, "DEBUG")
-    local url = string.format("%s/get-key-by-discord?discordId=%s&secret=%s", API_URL_BASE, tostring(discordId), tostring(API_SECRET))
-    local success, result = pcall(function()
-        return game:HttpGet(url, true)
-    end)
-    if success and result and result ~= "no_key_found" then
-        local key = trim(result)
-        if #key == 16 then
-            log("Key encontrada via Discord ID!", "SUCCESS")
-            return key
-        end
-    end
-    log("Nenhuma key encontrada para Discord ID: " .. discordId, "DEBUG")
-    return nil
-end
-
--- === CACHE LOCAL ===
-local function getKeyFromCache()
-    if _G.ShiftHub_CachedKey and #_G.ShiftHub_CachedKey == 16 then
-        log("Key encontrada no cache!", "SUCCESS")
-        return _G.ShiftHub_CachedKey
+    local url = string.format("%s/get-key-by-roblox?robloxId=%s&secret=%s", API_URL_BASE, userId, API_SECRET)
+    local ok, result = pcall(function() return game:HttpGet(url, true) end)
+    if ok and result and result ~= "no_key_found" and #trim(result) == 16 then
+        return trim(result)
     end
     return nil
 end
 
--- === INPUT MANUAL (FALLBACK) ===
-local function getKeyFromUser()
-    log("Solicitando input manual da key...", "DEBUG")
-    if gettextinput then
-        local ok, result = pcall(function()
-            return gettextinput("ShiftHub - Primeira Execução", "Insira sua Script Key de 16 caracteres:")
-        end)
-        if ok and result and #result == 16 then
-            local key = trim(result)
-            _G.ShiftHub_CachedKey = key -- Salva no cache
-            log("Key inserida manualmente!", "SUCCESS")
-            return key
-        end
-    end
-    log("Não foi possível obter input do usuário", "ERROR")
-    return nil
-end
-
--- === VERIFY KEY (envia secret) ===
-local function verifyKey(script_key, user_hwid)
-    local full_url = string.format("%s/verify?key=%s&hwid=%s&secret=%s", API_URL_BASE, script_key, user_hwid, API_SECRET)
-    local ok, res = pcall(function() return game:HttpGet(full_url, true) end)
-    if not ok then
-        return nil, "connection_error"
-    end
-    local response = (res or ""):gsub("'", ""):gsub('"', ""):gsub("^%s+", ""):gsub("%s+$", ""):lower()
+local function verifyKey(script_key, hwid)
+    local url = string.format("%s/verify?key=%s&hwid=%s&secret=%s", API_URL_BASE, script_key, hwid, API_SECRET)
+    local ok, res = pcall(function() return game:HttpGet(url, true) end)
+    if not ok then return nil, "connection_error" end
+    local response = (res or ""):gsub("'", ""):gsub('"', ""):lower()
     return response, nil
 end
 
--- === OBTER SCRIPT KEY (fluxo principal) ===
-local function getScriptKey()
-    log("Iniciando busca automática de key...")
-    -- 1) Discord ID (se preenchido)
-    if DISCORD_ID then
-        local k = getKeyByDiscordId(DISCORD_ID)
-        if k then return k end
-    end
-    -- 2) Roblox User ID
-    local k = getKeyByRobloxId()
-    if k then return k end
-    -- 3) Cache local
-    k = getKeyFromCache()
-    if k then return k end
-    -- 4) Input manual
-    log("Nenhuma key automática encontrada. Solicitando input manual...", "INFO")
-    k = getKeyFromUser()
-    if k then return k end
-    return nil
-end
-
--- === NOTIFICAÇÃO ===
 local function notify(title, text, duration)
     pcall(function()
-        game.StarterGui:SetCore("SendNotification", {
-            Title = title,
-            Text = text,
-            Duration = duration or 5
-        })
+        game.StarterGui:SetCore("SendNotification", {Title = title, Text = text, Duration = duration or 5})
     end)
 end
 
--- ========================================
--- === INÍCIO DA AUTENTICAÇÃO ===
--- ========================================
-log("===========================================")
-log("ShiftHub AutoLoader v2.0")
-log("===========================================")
-
--- Obtém a key
-local script_key = getScriptKey()
+-- === AUTENTICAÇÃO ===
+local script_key = getKeyByRobloxId() or _G.ShiftHub_CachedKey
 if not script_key or #script_key ~= 16 then
-    notify("ShiftHub", "❌ Erro: Nenhuma key encontrada", 10)
-    error("[ShiftHub] Não foi possível obter sua key. Resgate uma key no Discord primeiro!")
+    notify("ShiftHub", "❌ Nenhuma key encontrada", 10)
+    error("[ShiftHub] Obtenha sua key no Discord.")
 end
-log("Key obtida: " .. script_key:sub(1, 4) .. "************")
 
--- Obtém o HWID
 local user_hwid = getHwid()
-log("HWID: " .. user_hwid:sub(1, 20) .. "...")
-
--- Valida com o servidor (inclui o secret)
-log("Validando com servidor...")
 local response, err = verifyKey(script_key, user_hwid)
 if not response then
     notify("ShiftHub", "❌ Erro de conexão", 10)
-    error("[ShiftHub] Não foi possível conectar ao servidor de autenticação. ("..tostring(err)..")")
+    error("[ShiftHub] Falha na conexão ("..tostring(err)..")")
 end
 
-log("Resposta do servidor: " .. tostring(response), "DEBUG")
-local VALIDACAO_SUCESSO = false
-
-if response == "hwid_registrado" then
-    log("HWID registrado com sucesso!", "SUCCESS")
-    notify("ShiftHub", "✅ Dispositivo registrado!", 5)
-    VALIDACAO_SUCESSO = true
-elseif response == "hwid_valido" then
-    log("Autenticação bem-sucedida!", "SUCCESS")
-    notify("ShiftHub", "✅ Autenticado com sucesso!", 3)
-    VALIDACAO_SUCESSO = true
-elseif response == "script_key_invalida" then
-    notify("ShiftHub", "❌ Key inválida", 10)
-    _G.ShiftHub_CachedKey = nil -- Limpa cache
-    error("[ShiftHub] Key inválida ou expirada. Use !checkkey no Discord para verificar.")
-elseif response == "hwid_diferente" then
-    notify("ShiftHub", "❌ HWID diferente", 10)
-    error("[ShiftHub] Esta key está vinculada a outro dispositivo. Use o botão 'Reset HWID' no Discord.")
-else
-    notify("ShiftHub", "❌ Erro desconhecido", 10)
-    error("[ShiftHub] Resposta inesperada: " .. tostring(response))
+if response ~= "hwid_valido" and response ~= "hwid_registrado" then
+    notify("ShiftHub", "❌ Erro: "..tostring(response), 10)
+    error("[ShiftHub] Falha na autenticação: "..tostring(response))
 end
 
--- Carrega o script principal
-if VALIDACAO_SUCESSO then
-    _G.ShiftHub_Validated = true
-    log("Carregando Shift Hub...")
-    notify("ShiftHub", "🚀 Carregando...", 2)
-    local GITHUB_SCRIPT_URL = "https://raw.githubusercontent.com/Osotaa/ShiftHub/main/ShiftHubScript.lua"
-    local script_success, script_error = pcall(function()
-        loadstring(game:HttpGet(GITHUB_SCRIPT_URL, true))()
+_G.ShiftHub_Validated = true
+notify("ShiftHub", "✅ Autenticado com sucesso!", 3)
+
+-----------------------------------------------------
+-- === SCRIPT PRINCIPAL (Rayfield GUI Integrado) ===
+-----------------------------------------------------
+if not _G.ShiftHub_Validated then
+    error("Erro: Acesso não autorizado. Execute o Loader para iniciar.")
+    return
+end
+
+local allowedPlaceId = 17687504411
+if game.PlaceId ~= allowedPlaceId then
+    warn("Script only works in All Star Tower Defense.")
+    return
+end
+
+local UserInputService = game:GetService("UserInputService")
+local TeleportService = game:GetService("TeleportService")
+
+function openMainWindow()
+    local Rayfield2 = loadstring(game:HttpGet('https://raw.githubusercontent.com/oxotaa/teste/refs/heads/main/source2.lua'))()
+
+    local mainWindow = Rayfield2:CreateWindow({
+        Name = "Shift Hub",
+        LoadingTitle = "Shift Hub",
+        LoadingSubtitle = "",
+        ConfigurationSaving = {Enabled = false},
+        KeySystem = false
+    })
+
+    local mainTab = mainWindow:CreateTab("🏠 Main")
+    mainTab:CreateSection("Welcome to Shift Hub!")
+
+    local rollbackEnabled = false
+
+    -- Hook rollback seguro
+    local mt = getrawmetatable(game)
+    setreadonly(mt, false)
+    local oldNamecall = mt.__namecall
+    mt.__namecall = newcclosure(function(self, ...)
+        local method = getnamecallmethod()
+        if rollbackEnabled and (self:IsA("RemoteEvent") or self:IsA("RemoteFunction")) then
+            if self:IsA("RemoteFunction") and method == "InvokeServer" then
+                return false
+            else
+                return nil
+            end
+        end
+        return oldNamecall(self, ...)
     end)
-    if not script_success then
-        log("Erro ao carregar o hub: " .. tostring(script_error), "ERROR")
-        notify("ShiftHub", "❌ Erro ao carregar hub", 10)
-        error("[ShiftHub] Erro ao carregar: " .. tostring(script_error))
-    end
-    log("Hub carregado com sucesso!", "SUCCESS")
-else
-    error("[ShiftHub] Falha na autenticação.")
+
+    mainTab:CreateToggle({
+        Name = "Rollback Trait",
+        CurrentValue = false,
+        Callback = function(value)
+            rollbackEnabled = value
+            if rollbackEnabled then
+                Rayfield2:Notify({Title = "Rollback", Content = "Ativado!", Duration = 3})
+            else
+                Rayfield2:Notify({Title = "Rollback", Content = "Desativado!", Duration = 3})
+            end
+        end
+    })
+
+    mainTab:CreateButton({
+        Name = "Confirm Rollback",
+        Callback = function()
+            if rollbackEnabled then
+                Rayfield2:Notify({Title = "Rollback", Content = "Carregando...", Duration = 3})
+                wait(6)
+                Rayfield2:Notify({Title = "Rollback", Content = "Feito com sucesso.", Duration = 3})
+                wait(3)
+                TeleportService:Teleport(game.PlaceId, game.Players.LocalPlayer)
+            else
+                Rayfield2:Notify({Title = "Erro", Content = "Rollback não está ativado.", Duration = 3})
+            end
+        end
+    })
+
+    local configsTab = mainWindow:CreateTab("⚙️ Config")
+    configsTab:CreateSection("Settings")
+
+    configsTab:CreateButton({
+        Name = "Rejoin",
+        Callback = function()
+            TeleportService:Teleport(game.PlaceId, game.Players.LocalPlayer)
+        end
+    })
+
+    local bindKey = nil
+    local listeningForBind = false
+    local bindLabel = configsTab:CreateLabel({Name = "Current Bind: None"})
+
+    configsTab:CreateButton({
+        Name = "Choose bind to show/hide interface",
+        Callback = function()
+            listeningForBind = true
+            bindLabel:SetText("Press any key...")
+        end
+    })
+
+    UserInputService.InputBegan:Connect(function(input, processed)
+        if listeningForBind and input.UserInputType == Enum.UserInputType.Keyboard then
+            bindKey = input.KeyCode
+            listeningForBind = false
+            bindLabel:SetText("Current Bind: " .. tostring(bindKey.Name))
+        elseif bindKey and input.UserInputType == Enum.UserInputType.Keyboard and input.KeyCode == bindKey then
+            mainWindow.Visible = not mainWindow.Visible
+        end
+    end)
+
+    mainWindow.Visible = true
 end
+
+openMainWindow()
