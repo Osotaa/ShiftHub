@@ -26,9 +26,8 @@ function openMainWindow(authKey)
 
     local mainWindow = Rayfield2:CreateWindow({
         Name = "Shift Hub",
-        LoadingTitle = "Shift Hub",
-        -- Exibe a chave que foi autenticada
-        LoadingSubtitle = "Shift Hub" .. ("N/A"),
+        LoadingTitle = "Shift Hub",             -- Título principal
+        LoadingSubtitle = "By osotaa",           -- Subtítulo conforme solicitado
         ConfigurationSaving = { Enabled = false },
         KeySystem = false
     })
@@ -214,6 +213,7 @@ local function runAuthentication()
     local automaticKey = getAutomaticKey()
 
     if not automaticKey then
+        -- MENSAGEM AJUSTADA
         warn("Vincule seu Roblox ID à key no bot Discord!")
         return
     end
@@ -235,4 +235,3 @@ local function runAuthentication()
 end
 
 runAuthentication()
-
