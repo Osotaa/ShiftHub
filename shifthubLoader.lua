@@ -81,7 +81,7 @@ local function getKeyFromUser()
     -- Método 3: Key fixa (APENAS PARA DEBUG - REMOVA EM PRODUÇÃO!)
     if not key then
         warn("⚠️ USANDO KEY DE DEBUG! Remova isso em produção!")
-        key = "PQUVUDHXUJSYFJMF" -- Sua key de teste
+        key = "MXSLIDUQORUNDYJA" -- Sua key de teste
     end
     
     return key
@@ -188,4 +188,5 @@ if VALIDACAO_SUCESSO then
 else
     warn("[ShiftHub Loader] Script principal não carregado.")
 end
+
 
