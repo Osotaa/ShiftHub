@@ -129,10 +129,13 @@ if not success then
 end
 
 -- === PROCESSA A RESPOSTA ===
-local response = trim(result):lower()
+-- Remove aspas simples, aspas duplas e espaços extras
+local response = result:gsub("'", ""):gsub('"', ""):gsub("^%s+", ""):gsub("%s+$", ""):lower()
+
 print("[ShiftHub Loader] Resposta do Servidor: '" .. response .. "'")
 print("[DEBUG] Resposta bruta (sem trim): '" .. result .. "'")
 print("[DEBUG] Tamanho da resposta: " .. #response)
+print("[DEBUG] Bytes da resposta:", string.byte(response, 1, -1))
 
 local VALIDACAO_SUCESSO = false
 
