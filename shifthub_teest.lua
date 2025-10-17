@@ -1,7 +1,7 @@
--- O script Loader
+-- ESTE É O SCRIPT LOADER FINAL E CORRIGIDO
 local API_URL_BASE = "https://patchily-droopiest-herbert.ngrok-free.dev/verify"
 
--- === CORREÇÃO 1: FUNÇÃO TRIM ===
+-- === FUNÇÃO TRIM ===
 local function trim(s)
     s = s:gsub("^%s+", "")
     return s:gsub("%s+$", "")
@@ -29,16 +29,16 @@ local function getHwid()
     return tostring(hwid):gsub(" ", "_"):sub(1, 64)
 end
 
--- === MODIFICAÇÃO 2: PEDIR A CHAVE AO USUÁRIO ===
-local key_input = game:GetService("UserInputService")
-local script_key = key_input:GetTextBox("ShiftHub Key", "Insira sua Key de Acesso de 16 dígitos aqui:")
+-- === MODIFICAÇÃO 2: PEDIR A CHAVE AO USUÁRIO (CORREÇÃO DE GETTEXTBOX) ===
+
+-- Utilize a função gettextinput() que é o padrão da maioria dos executores.
+local script_key = gettextinput("ShiftHub Key", "Insira sua Key de Acesso de 16 dígitos aqui:")
 
 if not script_key or #script_key < 16 then
     error("[ShiftHub Loader] Acesso Negado: Key Inválida ou não inserida. [C:400]")
 end
 
--- Define a chave inserida (necessário para o script principal)
-_G.key_to_check = script_key 
+_G.key_to_check = script_key
 
 local user_hwid = getHwid()
 
@@ -55,7 +55,6 @@ if not success then
     error("[ShiftHub Loader] Erro ao conectar com o Servidor de Validação. Verifique a URL.")
 end
 
--- === CORREÇÃO 1: USANDO A FUNÇÃO TRIM ===
 local response = trim(result):lower()
 print("[ShiftHub Loader] Resposta do Servidor: " .. response)
 
@@ -85,17 +84,13 @@ else
     error("[ShiftHub Loader] Resposta inesperada do Servidor. Tente novamente mais tarde. [C:500]")
 end
 
--- CORREÇÃO AQUI: Mudando a URL do GitHub para o formato RAW padrão
-local GITHUB_SCRIPT_URL = "https://raw.githubusercontent.com/Osotaa/ShiftHub/refs/heads/main/ShiftHubScript"
+local GITHUB_SCRIPT_URL = "https://raw.githubusercontent.com/Osotaa/ShiftHub/main/ShiftHubScript.lua" -- Verifique se este link está correto!
 
 if VALIDACAO_SUCESSO then
-    -- === MODIFICAÇÃO 3: ADICIONANDO A FLAG GLOBAL ===
-    _G.ShiftHub_Validated = true 
+    _G.ShiftHub_Validated = true
 
     print("[ShiftHub Loader] Carregando script principal de: " .. GITHUB_SCRIPT_URL)
-    -- Carrega e executa o script final
     loadstring(game:HttpGet(GITHUB_SCRIPT_URL, true))()
 else
     warn("[ShiftHub Loader] Script principal não carregado.")
 end
-
