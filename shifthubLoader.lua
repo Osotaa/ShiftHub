@@ -89,9 +89,20 @@ if not _G.ShiftHub_Validated then
     return
 end
 
-local allowedPlaceId = 17687504411
-if game.PlaceId ~= allowedPlaceId then
-    warn("Script only works in All Star Tower Defense.")
+-- IDs permitidos
+local allowedPlaceIds = {17687504411, 16146832113}
+local currentPlaceId = game.PlaceId
+
+local isAllowed = false
+for _, id in pairs(allowedPlaceIds) do
+    if currentPlaceId == id then
+        isAllowed = true
+        break
+    end
+end
+
+if not isAllowed then
+    warn("Script only works in All Star Tower Defense And Anime Vanguards!")
     return
 end
 
