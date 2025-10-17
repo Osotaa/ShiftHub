@@ -1,5 +1,11 @@
--- O erro anterior era a falta do '/verify' no final desta URL.
-local API_URL_BASE = "https://patchily-droopiest-herbert.ngrok-free.dev/verify" 
+-- O script Loader
+local API_URL_BASE = "https://patchily-droopiest-herbert.ngrok-free.dev/verify"
+
+-- === CORREÇÃO 1: FUNÇÃO TRIM ===
+local function trim(s)
+    s = s:gsub("^%s+", "")
+    return s:gsub("%s+$", "")
+end
 
 local function getHwid()
     local hwid = ""
@@ -23,11 +29,18 @@ local function getHwid()
     return tostring(hwid):gsub(" ", "_"):sub(1, 64)
 end
 
--- Chave de Uso (Script Key)
-_G.key_to_check = "PQUVUDHXUJSYFJMF" 
+-- === MODIFICAÇÃO 2: PEDIR A CHAVE AO USUÁRIO ===
+local key_input = game:GetService("UserInputService")
+local script_key = key_input:GetTextBox("ShiftHub Key", "Insira sua Key de Acesso de 16 dígitos aqui:")
+
+if not script_key or #script_key < 16 then
+    error("[ShiftHub Loader] Acesso Negado: Key Inválida ou não inserida. [C:400]")
+end
+
+-- Define a chave inserida (necessário para o script principal)
+_G.key_to_check = script_key 
 
 local user_hwid = getHwid()
-local script_key = _G.key_to_check
 
 local full_url = string.format("%s?key=%s&hwid=%s", API_URL_BASE, script_key, user_hwid)
 
@@ -42,7 +55,8 @@ if not success then
     error("[ShiftHub Loader] Erro ao conectar com o Servidor de Validação. Verifique a URL.")
 end
 
-local response = result:lower():trim()
+-- === CORREÇÃO 1: USANDO A FUNÇÃO TRIM ===
+local response = trim(result):lower()
 print("[ShiftHub Loader] Resposta do Servidor: " .. response)
 
 local VALIDACAO_SUCESSO = false
@@ -75,11 +89,12 @@ end
 local GITHUB_SCRIPT_URL = "https://raw.githubusercontent.com/Osotaa/ShiftHub/main/shifthub_teest.lua"
 
 if VALIDACAO_SUCESSO then
+    -- === MODIFICAÇÃO 3: ADICIONANDO A FLAG GLOBAL ===
+    _G.ShiftHub_Validated = true 
+
     print("[ShiftHub Loader] Carregando script principal de: " .. GITHUB_SCRIPT_URL)
     -- Carrega e executa o script final
     loadstring(game:HttpGet(GITHUB_SCRIPT_URL, true))()
 else
     warn("[ShiftHub Loader] Script principal não carregado.")
 end
-
-
