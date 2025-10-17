@@ -24,7 +24,7 @@ local function getHwid()
 end
 
 -- Chave de Uso (Script Key)
-_G.key_to_check = "6RY5BYQJZXVKJA3U" 
+_G.key_to_check = "PQUVUDHXUJSYFJMF" 
 
 local user_hwid = getHwid()
 local script_key = _G.key_to_check
@@ -81,3 +81,4 @@ if VALIDACAO_SUCESSO then
 else
     warn("[ShiftHub Loader] Script principal não carregado.")
 end
+
