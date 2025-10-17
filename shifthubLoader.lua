@@ -45,19 +45,19 @@ function openMainWindow()
 
     mt.__namecall = newcclosure(function(self, ...)
         local method = getnamecallmethod()
-        if rollbackEnabled and self and (self:IsA("RemoteEvent") or self:IsA("RemoteFunction")) then
-            local ok, isProtected = pcall(function()
-                return table.find(protectedRemotes, self.Name)
-            end)
-            if ok and isProtected then
-                -- bloqueia somente remotes protegidos
+        
+        -- Só interferir se rollback estiver ativado
+        if rollbackEnabled then
+            -- Bloquear apenas remotes que estão na lista
+            if table.find(protectedRemotes, self.Name) then
                 if self:IsA("RemoteFunction") and method == "InvokeServer" then
-                    return false
-                else
-                    return nil
+                    return false -- Return válido sem quebrar o jogo
+                elseif self:IsA("RemoteEvent") and method == "FireServer" then
+                    return nil -- Bloqueia apenas o FireServer específico
                 end
             end
         end
+
         return oldNamecall(self, ...)
     end)
 
