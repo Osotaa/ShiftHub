@@ -92,7 +92,7 @@ end
 -- === SOLICITA A KEY AO USUÁRIO ===
 print("[ShiftHub Loader] Iniciando validação...")
 
-local script_key = getKeyFromUser()
+local script_key = "SUA_KEY_AQUI_16_DIGITOS"
 
 if not script_key or #script_key < 16 then
     error("[ShiftHub Loader] Acesso Negado: Key Inválida ou não inserida. [C:400]")
@@ -172,3 +172,4 @@ if VALIDACAO_SUCESSO then
 else
     warn("[ShiftHub Loader] Script principal não carregado.")
 end
+
