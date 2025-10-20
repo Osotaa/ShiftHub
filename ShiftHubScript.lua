@@ -17,7 +17,7 @@ local gameName = _G.GameName
 -- ===============================
 -- Carrega Rayfield
 -- ===============================
-local Rayfield = loadstring(game:HttpGet("https://raw.githubusercontent.com/oxotaa/teste/refs/heads/main/source2.lua"))()
+local Rayfield = loadstring(game:HttpGet("https://raw.githubusercontent.com/Osotaa/teste/refs/heads/main/source2.lua"))()
 
 -- ===============================
 -- Cria a janela principal
