@@ -8,6 +8,7 @@ local key = nil
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local StarterGui = game:GetService("StarterGui")
+local TweenService = game:GetService("TweenService")
 
 -- Identificação do usuário
 local robloxId = LocalPlayer.UserId
@@ -102,9 +103,9 @@ local function runLoader()
         -- Executa o Rayfield GUI Loader
         -- ================================
         local success, err = pcall(function()
-            local Rayfield2 = loadstring(game:HttpGet('https://raw.githubusercontent.com/oxotaa/teste/refs/heads/main/source2.lua'))()
+            local Rayfield = loadstring(game:HttpGet("https://raw.githubusercontent.com/Osotaa/teste/refs/heads/main/source2.lua"))()
 
-            local mainWindow = Rayfield2:CreateWindow({
+            local mainWindow = Rayfield:CreateWindow({
                 Name = "Shift Hub",
                 LoadingTitle = "Shift Hub",
                 LoadingSubtitle = "By osotaa",
@@ -115,17 +116,23 @@ local function runLoader()
             local mainTab = mainWindow:CreateTab("🏠 Main")
             mainTab:CreateSection("Welcome to Shift Hub!")
 
+            -- Rollback aprimorado
             local rollbackEnabled = false
-            local protectedRemotes = {"TraitChange", "UpgradeUnit", "SummonUnit"}
+            local rollbackType = "Trait"
+            local protectedRemotes = {
+                Trait = {"TraitChange", "UpgradeUnit"},
+                Summon = {"SummonUnit"}
+            }
 
+            -- Hook do rollback
             local mt = getrawmetatable(game)
             setreadonly(mt, false)
             local oldNamecall = mt.__namecall
-
             mt.__namecall = newcclosure(function(self, ...)
                 local method = getnamecallmethod()
                 if rollbackEnabled then
-                    if table.find(protectedRemotes, self.Name) then
+                    local currentList = protectedRemotes[rollbackType]
+                    if currentList and table.find(currentList, self.Name) then
                         if self:IsA("RemoteFunction") and method == "InvokeServer" then
                             return false
                         elseif self:IsA("RemoteEvent") and method == "FireServer" then
@@ -136,32 +143,109 @@ local function runLoader()
                 return oldNamecall(self, ...)
             end)
 
+            mainTab:CreateSection("Rollback System")
+
+            -- Dropdown com fade-in
+            local rollbackDropdown = mainTab:CreateDropdown({
+                Name = "Tipo de Rollback",
+                Options = {"Trait", "Summon"},
+                CurrentOption = "Trait",
+                Callback = function(option)
+                    rollbackType = option
+                    Rayfield:Notify({
+                        Title = "Rollback Type",
+                        Content = "Tipo de rollback definido para: " .. option,
+                        Duration = 3
+                    })
+                end
+            })
+
+            -- efeito visual no dropdown (fade-in)
+            task.wait(0.5)
+            local dropdownFrame
+            pcall(function()
+                for _, gui in pairs(LocalPlayer:WaitForChild("PlayerGui"):GetDescendants()) do
+                    if gui:IsA("Frame") and gui.Name:lower():find("dropdown") then
+                        dropdownFrame = gui
+                    end
+                end
+            end)
+
+            if dropdownFrame then
+                dropdownFrame.DescendantAdded:Connect(function(obj)
+                    if obj:IsA("Frame") and obj.Name:lower():find("options") then
+                        obj.BackgroundTransparency = 1
+                        for _, child in pairs(obj:GetDescendants()) do
+                            if child:IsA("TextLabel") or child:IsA("TextButton") or child:IsA("Frame") then
+                                child.BackgroundTransparency = 1
+                                if child.TextTransparency ~= nil then
+                                    child.TextTransparency = 1
+                                end
+                            end
+                        end
+                        TweenService:Create(obj, TweenInfo.new(0.3, Enum.EasingStyle.Sine, Enum.EasingDirection.Out), {
+                            BackgroundTransparency = 0
+                        }):Play()
+                        task.wait(0.05)
+                        for _, child in pairs(obj:GetDescendants()) do
+                            if child:IsA("TextLabel") or child:IsA("TextButton") then
+                                TweenService:Create(child, TweenInfo.new(0.3), {TextTransparency = 0}):Play()
+                            elseif child:IsA("Frame") then
+                                TweenService:Create(child, TweenInfo.new(0.3), {BackgroundTransparency = 0}):Play()
+                            end
+                        end
+                    end
+                end)
+            end
+
+            -- Toggle rollback
             mainTab:CreateToggle({
-                Name = "Rollback Trait",
+                Name = "Rollback",
                 CurrentValue = false,
                 Callback = function(value)
                     rollbackEnabled = value
                     if rollbackEnabled then
-                        Rayfield2:Notify({Title="Rollback", Content="Rollback Ativado!", Duration=3})
+                        Rayfield:Notify({
+                            Title = "Rollback",
+                            Content = "Rollback (" .. rollbackType .. ") ativado!",
+                            Duration = 3
+                        })
                     else
-                        Rayfield2:Notify({Title="Rollback", Content="Rollback Desativado!", Duration=3})
+                        Rayfield:Notify({
+                            Title = "Rollback",
+                            Content = "Rollback desativado!",
+                            Duration = 3
+                        })
                     end
                 end
             })
 
+            -- Confirm rollback
             mainTab:CreateButton({
                 Name = "Confirm Rollback",
                 Callback = function()
                     if rollbackEnabled then
-                        Rayfield2:Notify({Title="Rollback", Content="Rollback carregando...", Duration=3})
+                        Rayfield:Notify({
+                            Title="Rollback",
+                            Content="Executando rollback (" .. rollbackType .. ")...",
+                            Duration=3
+                        })
                         wait(6)
-                        Rayfield2:Notify({Title="Rollback", Content="Rollback feito com sucesso.", Duration=3})
+                        Rayfield:Notify({
+                            Title="Rollback",
+                            Content="Rollback concluído com sucesso.",
+                            Duration=3
+                        })
                         rollbackEnabled = false
                         mt.__namecall = oldNamecall
                         wait(1)
-                        game:GetService("TeleportService"):Teleport(game.PlaceId, game.Players.LocalPlayer)
+                        game:GetService("TeleportService"):Teleport(game.PlaceId, LocalPlayer)
                     else
-                        Rayfield2:Notify({Title="Error", Content="Ative o Rollback primeiro!", Duration=3})
+                        Rayfield:Notify({
+                            Title="Erro",
+                            Content="Ative o rollback primeiro!",
+                            Duration=3
+                        })
                     end
                 end
             })
@@ -173,7 +257,7 @@ local function runLoader()
             configsTab:CreateButton({
                 Name = "Rejoin",
                 Callback = function()
-                    game:GetService("TeleportService"):Teleport(game.PlaceId, game.Players.LocalPlayer)
+                    game:GetService("TeleportService"):Teleport(game.PlaceId, LocalPlayer)
                 end
             })
 
@@ -206,13 +290,8 @@ local function runLoader()
         if not success then
             warn("Erro ao iniciar GUI Rayfield: " .. err)
         end
-
-    elseif authResponse == "script_key_invalida" then
-        warn("Licença inválida.")
-    elseif authResponse == "hwid_diferente" then
-        warn("HWID diferente. Sua chave está vinculada a outro dispositivo.")
     else
-        warn("Falha na autenticação.")
+        warn("Falha na autenticação: " .. tostring(authResponse))
     end
 end
 
