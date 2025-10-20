@@ -100,7 +100,7 @@ local function runLoader()
 
         -- Executa o script principal
         local success, err = pcall(function()
-    loadstring(game:HttpGet("https://raw.githubusercontent.com/Osotaa/ShiftHub/main/shifthubScript.lua"))()
+    loadstring(game:HttpGet("https://raw.githubusercontent.com/Osotaa/ShiftHub/refs/heads/main/ShiftHubScript.lua"))()
 end)
 
         if not success then
@@ -117,5 +117,6 @@ end
 
 -- Executa loader
 runLoader()
+
 
 
