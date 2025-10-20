@@ -1,26 +1,40 @@
--- 1. VERIFICAÇÃO DE VALIDAÇÃO
+-- ===============================
+-- ShiftHub Script Principal
+-- ===============================
 if not _G.ShiftHub_Validated then
-    error("Erro: Acesso não autorizado. Execute o Loader para iniciar.")
+    error("Erro: Acesso não autorizado. Execute o Loader primeiro.")
     return
 end
 
--- 2. SEÇÃO DE CÓDIGO DO HUB/GUI
-print("[ShiftHub] Script principal carregado com sucesso. Iniciando GUI...")
-
+-- Serviços
 local Players = game:GetService("Players")
-local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
 local TeleportService = game:GetService("TeleportService")
+local UserInputService = game:GetService("UserInputService")
 local LocalPlayer = Players.LocalPlayer
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
+local StarterGui = game:GetService("StarterGui")
 
--- Cria o ScreenGui
+local gameName = _G.GameName
+
+-- Função de notificação
+local function notify(message, duration)
+    duration = duration or 2
+    StarterGui:SetCore("SendNotification", {
+        Title = "Shift Hub",
+        Text = message,
+        Duration = duration
+    })
+end
+
+-- ----------------------------
+-- GUI principal
+-- ----------------------------
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "CustomGUI"
 ScreenGui.Parent = PlayerGui
 ScreenGui.ResetOnSpawn = false
 
--- Cria o Frame principal
 local Frame = Instance.new("Frame")
 Frame.Name = "MainFrame"
 Frame.Size = UDim2.new(0, 300, 0, 200)
@@ -31,19 +45,18 @@ Frame.Draggable = true
 Frame.Active = true
 Frame.Parent = ScreenGui
 
--- Título do GUI
 local TitleLabel = Instance.new("TextLabel")
 TitleLabel.Name = "Title"
 TitleLabel.Size = UDim2.new(1, 0, 0, 30)
 TitleLabel.Position = UDim2.new(0, 0, 0, 0)
 TitleLabel.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-TitleLabel.Text = "Game"
+TitleLabel.Text = gameName
 TitleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 TitleLabel.Font = Enum.Font.Gotham
 TitleLabel.TextSize = 18
 TitleLabel.Parent = Frame
 
--- Botão de Fechar
+-- Botões fechar/minimizar
 local CloseButton = Instance.new("TextButton")
 CloseButton.Name = "CloseButton"
 CloseButton.Size = UDim2.new(0, 30, 0, 30)
@@ -54,12 +67,10 @@ CloseButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 CloseButton.Font = Enum.Font.SourceSans
 CloseButton.TextSize = 20
 CloseButton.Parent = Frame
-
 CloseButton.MouseButton1Click:Connect(function()
     ScreenGui.Enabled = false
 end)
 
--- Botão de Minimizar
 local MinimizeButton = Instance.new("TextButton")
 MinimizeButton.Name = "MinimizeButton"
 MinimizeButton.Size = UDim2.new(0, 30, 0, 30)
@@ -70,19 +81,11 @@ MinimizeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 MinimizeButton.Font = Enum.Font.SourceSans
 MinimizeButton.TextSize = 20
 MinimizeButton.Parent = Frame
-
 MinimizeButton.MouseButton1Click:Connect(function()
     Frame.Visible = false
 end)
 
--- Tecla de bind para minimizar
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
-    if not gameProcessed and input.KeyCode == Enum.KeyCode.M then
-        Frame.Visible = not Frame.Visible
-    end
-end)
-
--- Conteúdo da aba "Game"
+-- Toggle Rollback
 local GameFrame = Instance.new("Frame")
 GameFrame.Name = "GameContent"
 GameFrame.Size = UDim2.new(1, 0, 1, -30)
@@ -90,26 +93,29 @@ GameFrame.Position = UDim2.new(0, 0, 0, 30)
 GameFrame.BackgroundTransparency = 1
 GameFrame.Parent = Frame
 
--- ⚠️ CORREÇÃO: Função de notificação ANTES de ser usada
-local function showNotification(message)
-    local notification = Instance.new("TextLabel")
-    notification.Size = UDim2.new(0, 300, 0, 50)
-    notification.Position = UDim2.new(0.5, -150, 0.5, -25)
-    notification.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-    notification.BackgroundTransparency = 0.5
-    notification.Text = message
-    notification.TextColor3 = Color3.fromRGB(255, 255, 255)
-    notification.Font = Enum.Font.Gotham
-    notification.TextSize = 20
-    notification.Parent = ScreenGui
-    
-    TweenService:Create(notification, TweenInfo.new(0.5, Enum.EasingStyle.Quad), {BackgroundTransparency = 0.8}):Play()
-    
-    wait(2)
-    notification:Destroy()
+local rollbackEnabled = false
+local protectedRemotes = {"TraitChange", "UpgradeUnit", "SummonUnit"}
+local mt = getrawmetatable(game)
+setreadonly(mt, false)
+local oldNamecall = mt.__namecall
+mt.__namecall = newcclosure(function(self, ...)
+    local method = getnamecallmethod()
+    if rollbackEnabled then
+        if table.find(protectedRemotes, self.Name) then
+            if self:IsA("RemoteFunction") and method == "InvokeServer" then
+                return false
+            elseif self:IsA("RemoteEvent") and method == "FireServer" then
+                return nil
+            end
+        end
+    end
+    return oldNamecall(self, ...)
+end)
+
+local function showNotification(msg)
+    notify(msg, 2)
 end
 
--- Botão Toggle: Rollback Trait
 local ToggleButton = Instance.new("TextButton")
 ToggleButton.Name = "ToggleButton"
 ToggleButton.Size = UDim2.new(0, 200, 0, 40)
@@ -121,11 +127,9 @@ ToggleButton.Font = Enum.Font.Gotham
 ToggleButton.TextSize = 16
 ToggleButton.Parent = GameFrame
 
-local isToggled = false
-
 ToggleButton.MouseButton1Click:Connect(function()
-    isToggled = not isToggled
-    if isToggled then
+    rollbackEnabled = not rollbackEnabled
+    if rollbackEnabled then
         ToggleButton.Text = "Rollback Trait (Ativado)"
         showNotification("Rollback Ativado")
     else
@@ -133,7 +137,6 @@ ToggleButton.MouseButton1Click:Connect(function()
     end
 end)
 
--- Botão: Confirm Rollback
 local ConfirmButton = Instance.new("TextButton")
 ConfirmButton.Name = "ConfirmButton"
 ConfirmButton.Size = UDim2.new(0, 200, 0, 40)
@@ -146,22 +149,9 @@ ConfirmButton.TextSize = 16
 ConfirmButton.Parent = GameFrame
 
 ConfirmButton.MouseButton1Click:Connect(function()
-    showNotification("Rollback Confirmed")
-    
-    local countdownLabel = Instance.new("TextLabel")
-    countdownLabel.Size = UDim2.new(0, 200, 0, 50)
-    countdownLabel.Position = UDim2.new(0.5, -100, 0.5, 0)
-    countdownLabel.BackgroundTransparency = 1
-    countdownLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-    countdownLabel.Font = Enum.Font.GothamBold
-    countdownLabel.TextSize = 24
-    countdownLabel.Parent = ScreenGui
-    
-    for i = 3, 1, -1 do
-        countdownLabel.Text = tostring(i)
-        wait(1)
-    end
-    
-    countdownLabel:Destroy()
+    showNotification("Rollback Confirmado")
+    wait(1)
+    rollbackEnabled = false
+    mt.__namecall = oldNamecall
     TeleportService:Teleport(game.PlaceId, LocalPlayer)
 end)
