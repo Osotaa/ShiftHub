@@ -85,7 +85,9 @@ MinimizeButton.MouseButton1Click:Connect(function()
     Frame.Visible = false
 end)
 
--- Toggle Rollback
+-- ----------------------------
+-- Conteúdo e Rollback
+-- ----------------------------
 local GameFrame = Instance.new("Frame")
 GameFrame.Name = "GameContent"
 GameFrame.Size = UDim2.new(1, 0, 1, -30)
@@ -116,6 +118,7 @@ local function showNotification(msg)
     notify(msg, 2)
 end
 
+-- Toggle Rollback
 local ToggleButton = Instance.new("TextButton")
 ToggleButton.Name = "ToggleButton"
 ToggleButton.Size = UDim2.new(0, 200, 0, 40)
@@ -137,6 +140,7 @@ ToggleButton.MouseButton1Click:Connect(function()
     end
 end)
 
+-- Confirm Rollback
 local ConfirmButton = Instance.new("TextButton")
 ConfirmButton.Name = "ConfirmButton"
 ConfirmButton.Size = UDim2.new(0, 200, 0, 40)
@@ -154,4 +158,36 @@ ConfirmButton.MouseButton1Click:Connect(function()
     rollbackEnabled = false
     mt.__namecall = oldNamecall
     TeleportService:Teleport(game.PlaceId, LocalPlayer)
+end)
+
+-- ----------------------------
+-- Bind configurável para abrir/fechar GUI
+-- ----------------------------
+local bindKey = Enum.KeyCode.RightShift -- default
+local bindLabel = Instance.new("TextLabel")
+bindLabel.Size = UDim2.new(1, 0, 0, 20)
+bindLabel.Position = UDim2.new(0, 0, 1, -20)
+bindLabel.BackgroundTransparency = 1
+bindLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+bindLabel.Font = Enum.Font.Gotham
+bindLabel.TextSize = 14
+bindLabel.Text = "Bind atual: RightShift"
+bindLabel.Parent = Frame
+
+local listeningForBind = false
+
+-- Clique no título para escolher bind (opcional)
+TitleLabel.MouseButton1Click:Connect(function()
+    listeningForBind = true
+    bindLabel.Text = "Pressione qualquer tecla para bind..."
+end)
+
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if listeningForBind and input.UserInputType == Enum.UserInputType.Keyboard then
+        bindKey = input.KeyCode
+        listeningForBind = false
+        bindLabel.Text = "Bind atual: "..tostring(bindKey.Name)
+    elseif input.UserInputType == Enum.UserInputType.Keyboard and input.KeyCode == bindKey then
+        Frame.Visible = not Frame.Visible
+    end
 end)
