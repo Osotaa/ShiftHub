@@ -1,37 +1,43 @@
 -- ===============================
--- ShiftHub Loader
+-- ShiftHub Loader (com notificações Rayfield)
 -- ===============================
+
 local API_BASE_URL = "https://patchily-droopiest-herbert.ngrok-free.dev/"
 local key = nil
 
 -- Serviços
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
-local StarterGui = game:GetService("StarterGui")
 
 -- Identificação do usuário
 local robloxId = LocalPlayer.UserId
 local hwid = tostring(robloxId) .. "_" .. LocalPlayer.Name:gsub("%s+", ""):lower()
 
+-- ===============================
+-- Carrega Rayfield (para notificações)
+-- ===============================
+local Rayfield = loadstring(game:HttpGet("https://raw.githubusercontent.com/Osotaa/teste/refs/heads/main/source2.lua"))()
+
 -- Função de notificação
-local function notify(message, duration)
-    duration = duration or 2
-    StarterGui:SetCore("SendNotification", {
-        Title = "Shift Hub",
-        Text = message,
-        Duration = duration
+local function notify(message, title)
+    Rayfield:Notify({
+        Title = title or "Shift Hub",
+        Content = message,
+        Duration = 3
     })
 end
 
--- Função para requisição à API
+-- ===============================
+-- Funções de API
+-- ===============================
 local function makeApiRequest(endpoint, params)
-    local clean_base_url = API_BASE_URL:gsub("/$", "")
-    local query_string = ""
+    local base = API_BASE_URL:gsub("/$", "")
+    local query = ""
     for k, v in pairs(params) do
-        query_string = query_string .. string.format("%s=%s&", k, v)
+        query = query .. string.format("%s=%s&", k, v)
     end
-    query_string = query_string:sub(1, #query_string - 1)
-    local url = string.format("%s/%s?%s", clean_base_url, endpoint, query_string)
+    query = query:sub(1, #query - 1)
+    local url = string.format("%s/%s?%s", base, endpoint, query)
 
     local success, response = pcall(function()
         return game:HttpGet(url, true)
@@ -60,11 +66,11 @@ local function verifyAuth(userKey, userHwid)
     return makeApiRequest("verify", { key = userKey, hwid = userHwid })
 end
 
--- ---------------------------
+-- ===============================
 -- Loader principal
--- ---------------------------
+-- ===============================
 local function runLoader()
-    notify("Codificando jogo...", 2)
+    notify("Codificando jogo...", "Shift Hub")
     wait(1)
 
     local allowedPlaceIds = {
@@ -80,9 +86,9 @@ local function runLoader()
         return
     end
 
-    notify("Jogo reconhecido: " .. gameName, 2)
+    notify("Jogo reconhecido: " .. gameName, "Shift Hub")
     wait(1)
-    notify("Iniciando Shift Hub")
+    notify("Iniciando Shift Hub", "Shift Hub")
 
     local automaticKey = getAutomaticKey()
     if not automaticKey then
@@ -94,14 +100,14 @@ local function runLoader()
     key = automaticKey
 
     if authResponse == "hwid_valido" or authResponse == "hwid_registrado" then
-        -- Define global para o script principal
+        -- Define globals para o script principal
         _G.ShiftHub_Validated = true
         _G.GameName = gameName
 
-        -- Executa o script principal
+        -- Executa o ShiftHubScript
         local success, err = pcall(function()
-    loadstring(game:HttpGet("https://raw.githubusercontent.com/Osotaa/ShiftHub/refs/heads/main/ShiftHubScript.lua"))()
-end)
+            loadstring(game:HttpGet("https://raw.githubusercontent.com/Osotaa/ShiftHub/refs/heads/main/ShiftHubScript.lua"))()
+        end)
 
         if not success then
             warn("Erro ao executar ShiftHubScript: " .. err)
@@ -117,8 +123,3 @@ end
 
 -- Executa loader
 runLoader()
-
-
-
-
-
