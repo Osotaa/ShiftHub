@@ -41,7 +41,7 @@ local function makeApiRequest(endpoint, params)
 	end)
 
 	if not success then
-		warn("Erro na comunicação com a API.")
+		warn("API communication error.")
 		return "erro_comunicacao"
 	end
 	return response
@@ -50,7 +50,7 @@ end
 local function getAutomaticKey()
 	local response = makeApiRequest("get-key-by-roblox", { robloxId = robloxId })
 	if response == "no_key_found" then
-		warn("Roblox ID não está vinculado a nenhuma chave.")
+		warn("Your Roblox ID has no key linked!.")
 		return nil
 	elseif response == "erro_comunicacao" or response == "erro_parametros" then
 		return nil
@@ -67,7 +67,7 @@ end
 -- Loader principal
 -- ---------------------------
 local function runLoader()
-	notify("Codificando jogo...", 2)
+	notify("Loading game...", 2)
 	wait(1)
 
 	local allowedPlaceIds = {
@@ -79,17 +79,17 @@ local function runLoader()
 	local gameName = allowedPlaceIds[currentPlaceId]
 
 	if not gameName then
-		warn("Script só funciona em All Star Tower Defense e Anime Vanguards.")
+		warn("Script only works in All Star Tower Defense and Anime Vanguards.")
 		return
 	end
 
-	notify("Jogo reconhecido: " .. gameName, 2)
+	notify("Game detected: " .. gameName, 2)
 	wait(1)
-	notify("Iniciando Shift Hub...")
+	notify("Starting Shift Hub...")
 
 	local automaticKey = getAutomaticKey()
 	if not automaticKey then
-		warn("Vincule seu Roblox ID à key no bot Discord!")
+		warn("Link your Roblox ID to your key in the Discord bot!")
 		return
 	end
 
@@ -149,7 +149,7 @@ local function runLoader()
 
 			-- Dropdown multi-seleção + animação
 			local rollbackDropdown = mainTab:CreateDropdown({
-				Name = "Selecionar tipos de Rollback",
+				Name = "Select Rollback Type",
 				Options = {"Trait", "Summon"},
 				MultiSelection = true,
 				CurrentOption = {},
@@ -157,8 +157,8 @@ local function runLoader()
 					rollbackTypes = selected
 					local selectionText = type(selected) == "table" and table.concat(selected, ", ") or tostring(selected)
 					Rayfield:Notify({
-						Title = "Tipos de Rollback",
-						Content = "Selecionados: " .. selectionText,
+						Title = "Rollback Type",
+						Content = "Selected: " .. selectionText,
 						Duration = 3
 					})
 				end
@@ -211,13 +211,13 @@ local function runLoader()
 					if rollbackEnabled then
 						Rayfield:Notify({
 							Title = "Rollback",
-							Content = "Rollback ativado! Tipos: " .. (#rollbackTypes > 0 and table.concat(rollbackTypes, ", ") or "nenhum selecionado"),
+							Content = "Rollback enabled! Type: " .. (#rollbackTypes > 0 and table.concat(rollbackTypes, ", ") or "nenhum selecionado"),
 							Duration = 3
 						})
 					else
 						Rayfield:Notify({
 							Title = "Rollback",
-							Content = "Rollback desativado!",
+							Content = "Rollback disabled!",
 							Duration = 3
 						})
 					end
@@ -242,7 +242,7 @@ local function runLoader()
 						end
 						Rayfield:Notify({
 							Title = "Rollback",
-							Content = "Rollbacks concluídos com sucesso!",
+							Content = "Rollback completed successfully!",
 							Duration = 3
 						})
 						rollbackEnabled = false
@@ -252,7 +252,7 @@ local function runLoader()
 					else
 						Rayfield:Notify({
 							Title = "Erro",
-							Content = "Selecione pelo menos um tipo e ative o rollback!",
+							Content = "Select at least one type and enable rollback!",
 							Duration = 3
 						})
 					end
@@ -272,28 +272,8 @@ local function runLoader()
 				end
 			})
 
-			-- Bind tecla para abrir/fechar GUI
-			local bindKey = nil
-			local listeningForBind = false
-			local currentBindLabel = configsTab:CreateLabel("Current Bind: None")
-
-			configsTab:CreateButton({
-				Name = "Escolher tecla para abrir/fechar interface",
-				Callback = function()
-					listeningForBind = true
-					currentBindLabel:Set("Pressione uma tecla...")
-				end
-			})
-
-			UserInputService.InputBegan:Connect(function(input, processed)
-				if listeningForBind and input.UserInputType == Enum.UserInputType.Keyboard then
-					bindKey = input.KeyCode
-					listeningForBind = false
-					currentBindLabel:Set("Current Bind: " .. bindKey.Name)
-				elseif bindKey and input.UserInputType == Enum.UserInputType.Keyboard and input.KeyCode == bindKey then
-					mainWindow.Visible = not mainWindow.Visible
-				end
-			end)
+			-- Remove interface de bind de tecla
+			-- (Não há mais botão nem label de bind)
 
 			mainWindow.Visible = true
 		end)
