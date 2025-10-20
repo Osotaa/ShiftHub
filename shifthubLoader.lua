@@ -82,7 +82,7 @@ local function runLoader()
 
     notify("Jogo reconhecido: " .. gameName, 2)
     wait(1)
-    notify("Iniciando Shift Hub no " .. gameName, 2)
+    notify("Iniciando Shift Hub")
 
     local automaticKey = getAutomaticKey()
     if not automaticKey then
@@ -100,8 +100,9 @@ local function runLoader()
 
         -- Executa o script principal
         local success, err = pcall(function()
-            loadstring(game:HttpGet("https://raw.githubusercontent.com/Osotaa/ShiftHub/refs/heads/main/ShiftHubScript.lua"))()
-        end)
+    loadstring(game:HttpGet("https://raw.githubusercontent.com/Osotaa/ShiftHub/main/shifthubScript.lua"))()
+end)
+
         if not success then
             warn("Erro ao executar ShiftHubScript: " .. err)
         end
@@ -116,4 +117,5 @@ end
 
 -- Executa loader
 runLoader()
+
 
