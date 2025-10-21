@@ -1,29 +1,22 @@
--- ShiftHub Loader (Versão aprimorada) - Linoria GUI integrado (NOTIFICAÇÕES ON-SCREEN FORÇADAS)
--- Ajustes: maiores intervalos entre as mensagens iniciais e intervalo de ~1s após seleção/ativação para garantir que
--- o jogador veja as notificações (sem alterar lógica principal).
--- Atualização: nos dropdowns do Rollback System, o texto visível foi alterado de
--- "Rollback Type" -> "Type" e "Rollback Method" -> "Method" conforme solicitado.
-
 local API_BASE_URL = "https://patchily-droopiest-herbert.ngrok-free.dev/"
 local key = nil
 
--- Serviços
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local TeleportService = game:GetService("TeleportService")
 local TweenService = game:GetService("TweenService")
 
--- Identificação do usuário (protegido caso LocalPlayer indefinido por algum motivo)
+
 local robloxId = (LocalPlayer and LocalPlayer.UserId) or 0
 local hwid = tostring(robloxId) .. "_" .. ((LocalPlayer and LocalPlayer.Name) or "unknown"):gsub("%s+", ""):lower()
 
--- util: trim
+
 local function trim(s)
     if type(s) ~= "string" then return s end
     return (s:gsub("^%s+", ""):gsub("%s+$", ""))
 end
 
--- util: limpa o sufixo "Recomended"/"Recommended"/"Recomended" e variações
+
 local function cleanMethodName(name)
     if type(name) ~= "string" then return name end
     local cleaned = name
@@ -33,9 +26,7 @@ local function cleanMethodName(name)
     return trim(cleaned)
 end
 
--- =============================
--- Fallback on-screen notification (canto inferior direito)
--- =============================
+
 local function createScreenNotification(title, content, duration)
     duration = duration or 3
     pcall(function()
@@ -113,14 +104,14 @@ local function createScreenNotification(title, content, duration)
     end)
 end
 
--- safeNotify: FORÇA o uso do createScreenNotification com título fixo "Shift Hub"
+
 local function safeNotify(_, content, duration)
     pcall(function()
         createScreenNotification("Shift Hub", content or "", duration or 3)
     end)
 end
 
--- Função para requisição à API
+
 local function makeApiRequest(endpoint, params)
     local clean_base_url = API_BASE_URL:gsub("/$", "")
     local query_string = ""
@@ -163,7 +154,6 @@ end
 -- Loader principal
 -- =============================
 local function runLoader()
-    -- aumentei duração das notificações iniciais e coloquei waits maiores para não aparecerem rápidas
     safeNotify(nil, "Loading game...", 3)
     wait(1.5)
 
@@ -375,3 +365,4 @@ end
 
 -- Executa loader
 runLoader()
+
