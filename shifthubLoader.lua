@@ -1,289 +1,376 @@
--- ===============================
--- ShiftHub Loader (Versão aprimorada)
--- ===============================
+-- ShiftHub Loader (Versão aprimorada) - Linoria GUI integrado (NOTIFICAÇÕES ON-SCREEN FORÇADAS)
+-- Ajustes: maiores intervalos entre as mensagens iniciais e intervalo de ~1s após seleção/ativação para garantir que
+-- o jogador veja as notificações (sem alterar lógica principal).
+-- Atualização: nos dropdowns do Rollback System, o texto visível foi alterado de
+-- "Rollback Type" -> "Type" e "Rollback Method" -> "Method" conforme solicitado.
+
 local API_BASE_URL = "https://patchily-droopiest-herbert.ngrok-free.dev/"
 local key = nil
 
 -- Serviços
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
-local StarterGui = game:GetService("StarterGui")
-local TweenService = game:GetService("TweenService")
 local TeleportService = game:GetService("TeleportService")
-local UserInputService = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
 
--- Identificação do usuário
-local robloxId = LocalPlayer.UserId
-local hwid = tostring(robloxId) .. "_" .. LocalPlayer.Name:gsub("%s+", ""):lower()
+-- Identificação do usuário (protegido caso LocalPlayer indefinido por algum motivo)
+local robloxId = (LocalPlayer and LocalPlayer.UserId) or 0
+local hwid = tostring(robloxId) .. "_" .. ((LocalPlayer and LocalPlayer.Name) or "unknown"):gsub("%s+", ""):lower()
 
--- Função de notificação
-local function notify(message, duration)
-	duration = duration or 2
-	StarterGui:SetCore("SendNotification", {
-		Title = "Shift Hub",
-		Text = message,
-		Duration = duration
-	})
+-- util: trim
+local function trim(s)
+    if type(s) ~= "string" then return s end
+    return (s:gsub("^%s+", ""):gsub("%s+$", ""))
+end
+
+-- util: limpa o sufixo "Recomended"/"Recommended"/"Recomended" e variações
+local function cleanMethodName(name)
+    if type(name) ~= "string" then return name end
+    local cleaned = name
+    cleaned = cleaned:gsub("%s*[—%-]%s*[Rr]eco[mn]en[ds]ed?", "")
+    cleaned = cleaned:gsub("%s*Recomen[ds]ed?", "")
+    cleaned = cleaned:gsub("%s*Recomended", "")
+    return trim(cleaned)
+end
+
+-- =============================
+-- Fallback on-screen notification (canto inferior direito)
+-- =============================
+local function createScreenNotification(title, content, duration)
+    duration = duration or 3
+    pcall(function()
+        local playerGui = LocalPlayer and (LocalPlayer:FindFirstChild("PlayerGui") or LocalPlayer:WaitForChild("PlayerGui", 5))
+        if not playerGui then
+            return
+        end
+
+        local sg = Instance.new("ScreenGui")
+        sg.Name = "ShiftHub_Notification_" .. tostring(math.random(100000,999999))
+        sg.ResetOnSpawn = false
+        sg.DisplayOrder = 99999
+
+        local frame = Instance.new("Frame")
+        frame.Size = UDim2.new(0, 360, 0, 68)
+        frame.AnchorPoint = Vector2.new(1, 1) -- bottom-right anchor
+        frame.Position = UDim2.new(1, -20, 1, -20) -- 20px margin from bottom-right
+        frame.BackgroundColor3 = Color3.fromRGB(40, 42, 50)
+        frame.BorderSizePixel = 0
+        frame.Parent = sg
+
+        local uicorner = Instance.new("UICorner")
+        uicorner.CornerRadius = UDim.new(0, 10)
+        uicorner.Parent = frame
+
+        -- Title fixed to "Shift Hub"
+        local titleLbl = Instance.new("TextLabel")
+        titleLbl.Parent = frame
+        titleLbl.Size = UDim2.new(1, -20, 0, 22)
+        titleLbl.Position = UDim2.new(0, 10, 0, 6)
+        titleLbl.BackgroundTransparency = 1
+        titleLbl.Font = Enum.Font.SourceSansBold
+        titleLbl.TextSize = 17
+        titleLbl.TextColor3 = Color3.fromRGB(255, 255, 255)
+        titleLbl.TextXAlignment = Enum.TextXAlignment.Left
+        titleLbl.Text = "Shift Hub"
+
+        local contentLbl = Instance.new("TextLabel")
+        contentLbl.Parent = frame
+        contentLbl.Size = UDim2.new(1, -20, 1, -36)
+        contentLbl.Position = UDim2.new(0, 10, 0, 30)
+        contentLbl.BackgroundTransparency = 1
+        contentLbl.Font = Enum.Font.SourceSans
+        contentLbl.TextSize = 14
+        contentLbl.TextColor3 = Color3.fromRGB(220, 220, 220)
+        contentLbl.TextXAlignment = Enum.TextXAlignment.Left
+        contentLbl.TextWrapped = true
+        contentLbl.Text = tostring(content or "")
+
+        -- Start invisible
+        frame.BackgroundTransparency = 1
+        titleLbl.TextTransparency = 1
+        contentLbl.TextTransparency = 1
+
+        sg.Parent = playerGui
+
+        -- Tween in
+        pcall(function()
+            TweenService:Create(frame, TweenInfo.new(0.22, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {BackgroundTransparency = 0}):Play()
+            TweenService:Create(titleLbl, TweenInfo.new(0.22), {TextTransparency = 0}):Play()
+            TweenService:Create(contentLbl, TweenInfo.new(0.22), {TextTransparency = 0}):Play()
+        end)
+
+        -- Fade out and destroy
+        spawn(function()
+            wait(duration)
+            pcall(function()
+                TweenService:Create(frame, TweenInfo.new(0.18), {BackgroundTransparency = 1}):Play()
+                TweenService:Create(titleLbl, TweenInfo.new(0.18), {TextTransparency = 1}):Play()
+                TweenService:Create(contentLbl, TweenInfo.new(0.18), {TextTransparency = 1}):Play()
+                wait(0.22)
+                sg:Destroy()
+            end)
+        end)
+    end)
+end
+
+-- safeNotify: FORÇA o uso do createScreenNotification com título fixo "Shift Hub"
+local function safeNotify(_, content, duration)
+    pcall(function()
+        createScreenNotification("Shift Hub", content or "", duration or 3)
+    end)
 end
 
 -- Função para requisição à API
 local function makeApiRequest(endpoint, params)
-	local clean_base_url = API_BASE_URL:gsub("/$", "")
-	local query_string = ""
-	for k, v in pairs(params) do
-		query_string = query_string .. string.format("%s=%s&", k, v)
-	end
-	query_string = query_string:sub(1, #query_string - 1)
-	local url = string.format("%s/%s?%s", clean_base_url, endpoint, query_string)
+    local clean_base_url = API_BASE_URL:gsub("/$", "")
+    local query_string = ""
+    for k, v in pairs(params) do
+        query_string = query_string .. string.format("%s=%s&", k, v)
+    end
+    if #query_string > 0 then
+        query_string = query_string:sub(1, #query_string - 1)
+    end
+    local url = string.format("%s/%s?%s", clean_base_url, endpoint, query_string)
 
-	local success, response = pcall(function()
-		return game:HttpGet(url, true)
-	end)
+    local success, response = pcall(function()
+        return game:HttpGet(url, true)
+    end)
 
-	if not success then
-		warn("API communication error.")
-		return "erro_comunicacao"
-	end
-	return response
+    if not success then
+        warn("[ShiftHub] API communication error.")
+        return "erro_comunicacao"
+    end
+    return response
 end
 
 local function getAutomaticKey()
-	local response = makeApiRequest("get-key-by-roblox", { robloxId = robloxId })
-	if response == "no_key_found" then
-		warn("Your Roblox ID has no key linked!.")
-		return nil
-	elseif response == "erro_comunicacao" or response == "erro_parametros" then
-		return nil
-	else
-		return response
-	end
+    local response = makeApiRequest("get-key-by-roblox", { robloxId = robloxId })
+    if response == "no_key_found" then
+        warn("[ShiftHub] Your Roblox ID has no key linked!.")
+        return nil
+    elseif response == "erro_comunicacao" or response == "erro_parametros" then
+        return nil
+    else
+        return response
+    end
 end
 
 local function verifyAuth(userKey, userHwid)
-	return makeApiRequest("verify", { key = userKey, hwid = userHwid })
+    return makeApiRequest("verify", { key = userKey, hwid = userHwid })
 end
 
--- ---------------------------
+-- =============================
 -- Loader principal
--- ---------------------------
+-- =============================
 local function runLoader()
-	notify("Loading game...", 2)
-	wait(1)
+    -- aumentei duração das notificações iniciais e coloquei waits maiores para não aparecerem rápidas
+    safeNotify(nil, "Loading game...", 3)
+    wait(1.5)
 
-	local allowedPlaceIds = {
-		[17687504411] = "All Star Tower Defense",
-		[16146832113] = "Anime Vanguards"
-	}
+    local allowedPlaceIds = {
+        [17687504411] = "All Star Tower Defense",
+        [16146832113] = "Anime Vanguards"
+    }
 
-	local currentPlaceId = game.PlaceId
-	local gameName = allowedPlaceIds[currentPlaceId]
+    local currentPlaceId = game.PlaceId
+    local gameName = allowedPlaceIds[currentPlaceId]
 
-	if not gameName then
-		warn("Script only works in All Star Tower Defense and Anime Vanguards.")
-		return
-	end
+    if not gameName then
+        warn("[ShiftHub] Script only works in All Star Tower Defense and Anime Vanguards.")
+        return
+    end
 
-	notify("Game detected: " .. gameName, 2)
-	wait(1)
-	notify("Starting Shift Hub...")
+    safeNotify(nil, "Game detected: " .. gameName, 3)
+    wait(1.5)
+    safeNotify(nil, "Starting Shift Hub...", 3)
+    wait(1.5)
 
-	local automaticKey = getAutomaticKey()
-	if not automaticKey then
-		warn("Link your Roblox ID to your key in the Discord bot!")
-		return
-	end
+    local automaticKey = getAutomaticKey()
+    if not automaticKey then
+        warn("[ShiftHub] Link your Roblox ID to your key in the Discord bot!")
+        return
+    end
 
-	local authResponse = verifyAuth(automaticKey, hwid)
-	key = automaticKey
+    local authResponse = verifyAuth(automaticKey, hwid)
+    key = automaticKey
 
-	if authResponse == "hwid_valido" or authResponse == "hwid_registrado" then
-		_G.ShiftHub_Validated = true
-		_G.GameName = gameName
+    if authResponse == "hwid_valido" or authResponse == "hwid_registrado" then
+        _G.ShiftHub_Validated = true
+        _G.GameName = gameName
 
-		local success, err = pcall(function()
-			local Rayfield = loadstring(game:HttpGet("https://raw.githubusercontent.com/Osotaa/teste/refs/heads/main/source2.lua"))()
+        local success, err = pcall(function()
+            -- Carrega Linoria (mantemos carga, mas notificações não dependem dela)
+            local repo = 'https://raw.githubusercontent.com/violin-suzutsuki/LinoriaLib/main/'
+            Library = loadstring(game:HttpGet(repo .. 'Library.lua'))() -- Library global para callbacks (se disponível)
+            local ThemeManager = loadstring(game:HttpGet(repo .. 'addons/ThemeManager.lua'))()
+            local SaveManager = loadstring(game:HttpGet(repo .. 'addons/SaveManager.lua'))()
 
-			local mainWindow = Rayfield:CreateWindow({
-				Name = "Shift Hub",
-				LoadingTitle = "Shift Hub",
-				LoadingSubtitle = "By osotaa",
-				ConfigurationSaving = { Enabled = false },
-				KeySystem = false
-			})
+            -- Cria janela
+            local Window = Library:CreateWindow({
+                Title = "Shift Hub",
+                Center = true,
+                AutoShow = true,
+                TabPadding = 8,
+                MenuFadeTime = 0.2,
+                Subtitle = gameName
+            })
 
-			local mainTab = mainWindow:CreateTab("🏠 Main")
-			mainTab:CreateSection("Welcome to Shift Hub!")
+            local Tabs = {
+                Main = Window:AddTab('Main'),
+                ['UI Settings'] = Window:AddTab('UI Settings'),
+            }
 
-			-- ===============================
-			-- Sistema de Rollback
-			-- ===============================
-			local rollbackEnabled = false
-			local rollbackTypes = {}
-			local protectedRemotes = {
-				Trait = {"TraitChange", "UpgradeUnit"},
-				Summon = {"SummonUnit"}
-			}
+            -- ===============================
+            -- Rollback Hook
+            -- ===============================
+            local rollbackEnabled = false
+            local rollbackType = nil
+            local rollbackMethod = nil
+            local protectedRemotes = {
+                Trait = {"TraitChange", "UpgradeUnit"},
+                Summon = {"SummonUnit"}
+            }
 
-			-- Hook de rollback
-			local mt = getrawmetatable(game)
-			setreadonly(mt, false)
-			local oldNamecall = mt.__namecall
-			mt.__namecall = newcclosure(function(self, ...)
-				local method = getnamecallmethod()
-				if rollbackEnabled then
-					for _, rollbackType in ipairs(rollbackTypes) do
-						local currentList = protectedRemotes[rollbackType]
-						if currentList and table.find(currentList, self.Name) then
-							if self:IsA("RemoteFunction") and method == "InvokeServer" then
-								return false
-							elseif self:IsA("RemoteEvent") and method == "FireServer" then
-								return nil
-							end
-						end
-					end
-				end
-				return oldNamecall(self, ...)
-			end)
+            local mt = getrawmetatable(game)
+            setreadonly(mt, false)
+            local oldNamecall = mt.__namecall
+            mt.__namecall = newcclosure(function(self, ...)
+                local method = getnamecallmethod()
+                if rollbackEnabled and rollbackType and rollbackMethod then
+                    local currentList = protectedRemotes[rollbackType]
+                    if currentList and table.find(currentList, self.Name) then
+                        if self:IsA("RemoteFunction") and method == "InvokeServer" then
+                            return false
+                        elseif self:IsA("RemoteEvent") and method == "FireServer" then
+                            return nil
+                        end
+                    end
+                end
+                return oldNamecall(self, ...)
+            end)
 
-			mainTab:CreateSection("Rollback System")
+            -- ===============================
+            -- POPULAÇÃO DA ABA MAIN
+            -- ===============================
+            local mainTab = Tabs.Main
+            local LeftGroupBox = mainTab:AddLeftGroupbox('Rollback System')
+            local RightGroupbox = mainTab:AddRightGroupbox('Extras')
 
-			-- Dropdown multi-seleção + animação
-			local rollbackDropdown = mainTab:CreateDropdown({
-				Name = "Select Rollback Type",
-				Options = {"Trait", "Summon"},
-				MultiSelection = true,
-				CurrentOption = {},
-				Callback = function(selected)
-					rollbackTypes = selected
-					local selectionText = type(selected) == "table" and table.concat(selected, ", ") or tostring(selected)
-					Rayfield:Notify({
-						Title = "Rollback Type",
-						Content = "Selected: " .. selectionText,
-						Duration = 3
-					})
-				end
-			})
+            -- Dropdown Type (visível apenas como "Type" no UI)
+            LeftGroupBox:AddDropdown('RollbackType', {
+                Values = { 'Trait', 'Summon' },
+                Default = "None",
+                Multi = false,
+                Text = 'Type', -- alterado aqui
+                Tooltip = 'Select type',
+                Callback = function(selected)
+                    rollbackType = tostring(selected)
+                    local displayText = rollbackType or "None"
+                    safeNotify(nil, "type selected: " .. displayText, 1)
+                    wait(1) -- intervalo após seleção para garantir visibilidade
+                end
+            })
 
-			-- Fade-in suave
-			task.wait(0.5)
-			local dropdownFrame
-			pcall(function()
-				for _, gui in pairs(LocalPlayer:WaitForChild("PlayerGui"):GetDescendants()) do
-					if gui:IsA("Frame") and gui.Name:lower():find("dropdown") then
-						dropdownFrame = gui
-					end
-				end
-			end)
+            -- Dropdown Method (visível apenas como "Method" no UI)
+            LeftGroupBox:AddDropdown('RollbackMethod', {
+                Values = { 'ServerSide — Recomended', 'ClientSide' },
+                Default = "None",
+                Multi = false,
+                Text = 'Method', -- alterado aqui
+                Tooltip = 'Select method',
+                Callback = function(selected)
+                    rollbackMethod = tostring(selected)
+                    local cleaned = cleanMethodName(rollbackMethod or "None")
+                    safeNotify(nil, "method selected: " .. cleaned, 1)
+                    wait(1) -- intervalo após seleção
+                end
+            })
 
-			if dropdownFrame then
-				dropdownFrame.DescendantAdded:Connect(function(obj)
-					if obj:IsA("Frame") and obj.Name:lower():find("options") then
-						obj.BackgroundTransparency = 1
-						for _, child in pairs(obj:GetDescendants()) do
-							if child:IsA("TextLabel") or child:IsA("TextButton") or child:IsA("Frame") then
-								child.BackgroundTransparency = 1
-								if child.TextTransparency ~= nil then
-									child.TextTransparency = 1
-								end
-							end
-						end
-						TweenService:Create(obj, TweenInfo.new(0.3, Enum.EasingStyle.Sine, Enum.EasingDirection.Out), {
-							BackgroundTransparency = 0
-						}):Play()
-						task.wait(0.05)
-						for _, child in pairs(obj:GetDescendants()) do
-							if child:IsA("TextLabel") or child:IsA("TextButton") then
-								TweenService:Create(child, TweenInfo.new(0.3), {TextTransparency = 0}):Play()
-							elseif child:IsA("Frame") then
-								TweenService:Create(child, TweenInfo.new(0.3), {BackgroundTransparency = 0}):Play()
-							end
-						end
-					end
-				end)
-			end
+            -- Toggle rollback
+            LeftGroupBox:AddToggle('Rollback', {
+                Text = 'Enable Rollback',
+                Default = false,
+                Tooltip = 'Enables or disables rollback',
+                Callback = function(value)
+                    rollbackEnabled = value
+                    local typeText = rollbackType or "None"
+                    local methodText = cleanMethodName(rollbackMethod or "None")
+                    if rollbackEnabled then
+                        safeNotify(nil, "Rollback Enabled! Method: " .. methodText .. " | Type: " .. typeText, 1)
+                    else
+                        safeNotify(nil, "Rollback disabled!", 1)
+                    end
+                    wait(1) -- intervalo após toggle para visibilidade
+                end
+            })
 
-			-- Toggle rollback
-			mainTab:CreateToggle({
-				Name = "Rollback",
-				CurrentValue = false,
-				Callback = function(value)
-					rollbackEnabled = value
-					if rollbackEnabled then
-						Rayfield:Notify({
-							Title = "Rollback",
-							Content = "Rollback enabled! Type: " .. (#rollbackTypes > 0 and table.concat(rollbackTypes, ", ") or "nenhum selecionado"),
-							Duration = 3
-						})
-					else
-						Rayfield:Notify({
-							Title = "Rollback",
-							Content = "Rollback disabled!",
-							Duration = 3
-						})
-					end
-				end
-			})
+            -- Botão confirmar rollback
+            LeftGroupBox:AddButton({
+                Text = 'Confirmar Rollback',
+                Func = function()
+                    if rollbackEnabled and rollbackType and rollbackMethod and rollbackType ~= "None" and rollbackMethod ~= "None" then
+                        local remotes = protectedRemotes[rollbackType]
+                        if remotes then
+                            safeNotify(nil, "Initiating rollback...", 2)
+                            wait(2)
+                            safeNotify(nil, "Rollback completed successfully!", 3)
+                            rollbackEnabled = false
+                            mt.__namecall = oldNamecall
+                            wait(1)
+                            TeleportService:Teleport(game.PlaceId, LocalPlayer)
+                        end
+                    else
+                        safeNotify(nil, "Select a type and method first!", 2)
+                    end
+                end
+            })
 
-			-- Botão confirmar rollback
-			mainTab:CreateButton({
-				Name = "Confirmar Rollback",
-				Callback = function()
-					if rollbackEnabled and #rollbackTypes > 0 then
-						for _, rollbackType in ipairs(rollbackTypes) do
-							local remotes = protectedRemotes[rollbackType]
-							if remotes then
-								Rayfield:Notify({
-									Title = "Rollback",
-									Content = "Executando rollback ("..rollbackType..")...",
-									Duration = 2
-								})
-								wait(2)
-							end
-						end
-						Rayfield:Notify({
-							Title = "Rollback",
-							Content = "Rollback completed successfully!",
-							Duration = 3
-						})
-						rollbackEnabled = false
-						mt.__namecall = oldNamecall
-						wait(1)
-						TeleportService:Teleport(game.PlaceId, LocalPlayer)
-					else
-						Rayfield:Notify({
-							Title = "Erro",
-							Content = "Select at least one type and enable rollback!",
-							Duration = 3
-						})
-					end
-				end
-			})
+            -- Botão Rejoin
+            RightGroupbox:AddButton({
+                Text = 'Rejoin',
+                Func = function()
+                    TeleportService:Teleport(game.PlaceId, LocalPlayer)
+                end
+            })
 
-			-- ===============================
-			-- Config Tab
-			-- ===============================
-			local configsTab = mainWindow:CreateTab("⚙️ Config")
-			configsTab:CreateSection("Settings")
+            -- UI Settings Tab
+            local configsTab = Tabs['UI Settings']
+            local MenuGroup = configsTab:AddLeftGroupbox('Menu')
+            MenuGroup:AddButton('Unload', function()
+                pcall(function() Library:Unload() end)
+            end)
+            MenuGroup:AddLabel('Menu bind'):AddKeyPicker('MenuKeybind', { Default = 'End', NoUI = true, Text = 'Menu keybind' })
 
-			configsTab:CreateButton({
-				Name = "Rejoin",
-				Callback = function()
-					TeleportService:Teleport(game.PlaceId, LocalPlayer)
-				end
-			})
+            -- Proteções ao definir o keybind (Options pode não existir dependendo da versão da lib)
+            pcall(function()
+                if type(Options) == "table" and Options.MenuKeybind then
+                    Library.ToggleKeybind = Options.MenuKeybind
+                elseif Library.Flags and Library.Flags.MenuKeybind then
+                    Library.ToggleKeybind = Library.Flags.MenuKeybind
+                end
+            end)
 
-			-- Remove interface de bind de tecla
-			-- (Não há mais botão nem label de bind)
+            ThemeManager:SetLibrary(Library)
+            SaveManager:SetLibrary(Library)
+            SaveManager:IgnoreThemeSettings()
+            SaveManager:SetIgnoreIndexes({ 'MenuKeybind' })
+            ThemeManager:SetFolder('ShiftHub')
+            SaveManager:SetFolder('ShiftHub/' .. gameName)
+            SaveManager:BuildConfigSection(Tabs['UI Settings'])
+            ThemeManager:ApplyToTab(Tabs['UI Settings'])
+            SaveManager:LoadAutoloadConfig()
+            pcall(function() if Window and type(Window.SetWatermarkVisibility) == "function" then Window:SetWatermarkVisibility(true) end end)
 
-			mainWindow.Visible = true
-		end)
+            -- Teste inicial: notificação on-screen forçada para confirmar GUI carregada
+            safeNotify(nil, "GUI carregada com sucesso!", 3)
+        end)
 
-		if not success then
-			warn("Erro ao iniciar GUI Rayfield: " .. err)
-		end
-	else
-		warn("Falha na autenticação: " .. tostring(authResponse))
-	end
+        if not success then
+            warn("[ShiftHub] Erro ao iniciar GUI Linoria: " .. tostring(err))
+        end
+    else
+        warn("[ShiftHub] Falha na autenticação: " .. tostring(authResponse))
+    end
 end
 
 -- Executa loader
