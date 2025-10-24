@@ -155,25 +155,30 @@ end
 -- =============================
 local function runLoader()
     safeNotify(nil, "Loading game...", 3)
-    wait(1.5)
+    wait(2)
 
     local allowedPlaceIds = {
         [17687504411] = "All Star Tower Defense",
-        [16146832113] = "Anime Vanguards"
+        [16146832113] = "Anime Vanguards",
+        [107573139811370] = "Anime Crusaders"
     }
 
     local currentPlaceId = game.PlaceId
     local gameName = allowedPlaceIds[currentPlaceId]
 
     if not gameName then
-        warn("[ShiftHub] Script only works in All Star Tower Defense and Anime Vanguards.")
+        warn("[ShiftHub] Script only works in All Star Tower Defense, Anime Vanguards, and Anime Crusaders.")
         return
     end
 
     safeNotify(nil, "Game detected: " .. gameName, 3)
-    wait(1.5)
+    wait(2)
+    safeNotify(nil, "Validating user credentials...", 3)
+    wait(2)
+    safeNotify(nil, "Authenticating with server...", 3)
+    wait(2)
     safeNotify(nil, "Starting Shift Hub...", 3)
-    wait(1.5)
+    wait(2)
 
     local automaticKey = getAutomaticKey()
     if not automaticKey then
@@ -365,4 +370,3 @@ end
 
 -- Executa loader
 runLoader()
-
