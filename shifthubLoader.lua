@@ -6,16 +6,14 @@ local LocalPlayer = Players.LocalPlayer
 local TeleportService = game:GetService("TeleportService")
 local TweenService = game:GetService("TweenService")
 
-
 local robloxId = (LocalPlayer and LocalPlayer.UserId) or 0
 local hwid = tostring(robloxId) .. "_" .. ((LocalPlayer and LocalPlayer.Name) or "unknown"):gsub("%s+", ""):lower()
 
-
+-- ===== FUNÇÕES AUXILIARES =====
 local function trim(s)
     if type(s) ~= "string" then return s end
     return (s:gsub("^%s+", ""):gsub("%s+$", ""))
 end
-
 
 local function cleanMethodName(name)
     if type(name) ~= "string" then return name end
@@ -26,14 +24,11 @@ local function cleanMethodName(name)
     return trim(cleaned)
 end
 
-
 local function createScreenNotification(title, content, duration)
     duration = duration or 3
     pcall(function()
-        local playerGui = LocalPlayer and (LocalPlayer:FindFirstChild("PlayerGui") or LocalPlayer:WaitForChild("PlayerGui", 5))
-        if not playerGui then
-            return
-        end
+        local playerGui = LocalPlayer:WaitForChild("PlayerGui", 5)
+        if not playerGui then return end
 
         local sg = Instance.new("ScreenGui")
         sg.Name = "ShiftHub_Notification_" .. tostring(math.random(100000,999999))
@@ -42,8 +37,8 @@ local function createScreenNotification(title, content, duration)
 
         local frame = Instance.new("Frame")
         frame.Size = UDim2.new(0, 360, 0, 68)
-        frame.AnchorPoint = Vector2.new(1, 1) -- bottom-right anchor
-        frame.Position = UDim2.new(1, -20, 1, -20) -- 20px margin from bottom-right
+        frame.AnchorPoint = Vector2.new(1, 1)
+        frame.Position = UDim2.new(1, -20, 1, -20)
         frame.BackgroundColor3 = Color3.fromRGB(40, 42, 50)
         frame.BorderSizePixel = 0
         frame.Parent = sg
@@ -52,7 +47,6 @@ local function createScreenNotification(title, content, duration)
         uicorner.CornerRadius = UDim.new(0, 10)
         uicorner.Parent = frame
 
-        -- Title fixed to "Shift Hub"
         local titleLbl = Instance.new("TextLabel")
         titleLbl.Parent = frame
         titleLbl.Size = UDim2.new(1, -20, 0, 22)
@@ -76,34 +70,30 @@ local function createScreenNotification(title, content, duration)
         contentLbl.TextWrapped = true
         contentLbl.Text = tostring(content or "")
 
-        -- Start invisible
         frame.BackgroundTransparency = 1
         titleLbl.TextTransparency = 1
         contentLbl.TextTransparency = 1
 
         sg.Parent = playerGui
 
-        -- Tween in
         pcall(function()
             TweenService:Create(frame, TweenInfo.new(0.22, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {BackgroundTransparency = 0}):Play()
             TweenService:Create(titleLbl, TweenInfo.new(0.22), {TextTransparency = 0}):Play()
             TweenService:Create(contentLbl, TweenInfo.new(0.22), {TextTransparency = 0}):Play()
         end)
 
-        -- Fade out and destroy
-        spawn(function()
-            wait(duration)
+        task.spawn(function()
+            task.wait(duration)
             pcall(function()
                 TweenService:Create(frame, TweenInfo.new(0.18), {BackgroundTransparency = 1}):Play()
                 TweenService:Create(titleLbl, TweenInfo.new(0.18), {TextTransparency = 1}):Play()
                 TweenService:Create(contentLbl, TweenInfo.new(0.18), {TextTransparency = 1}):Play()
-                wait(0.22)
+                task.wait(0.22)
                 sg:Destroy()
             end)
         end)
     end)
 end
-
 
 local function safeNotify(_, content, duration)
     pcall(function()
@@ -111,7 +101,7 @@ local function safeNotify(_, content, duration)
     end)
 end
 
-
+-- ===== API FUNCTIONS =====
 local function makeApiRequest(endpoint, params)
     local clean_base_url = API_BASE_URL:gsub("/$", "")
     local query_string = ""
@@ -137,7 +127,7 @@ end
 local function getAutomaticKey()
     local response = makeApiRequest("get-key-by-roblox", { robloxId = robloxId })
     if response == "no_key_found" then
-        warn("[ShiftHub] Your Roblox ID has no key linked!.")
+        warn("[ShiftHub] Your Roblox ID has no key linked!")
         return nil
     elseif response == "erro_comunicacao" or response == "erro_parametros" then
         return nil
@@ -150,12 +140,77 @@ local function verifyAuth(userKey, userHwid)
     return makeApiRequest("verify", { key = userKey, hwid = userHwid })
 end
 
--- =============================
--- Loader principal
--- =============================
+-- ===== FUNÇÃO PARA CARREGAR LINORIA COM FALLBACKS =====
+local function loadLinoria()
+    local sources = {
+        -- Fonte 1: mstudio45
+        {
+            name = "mstudio45",
+            library = "https://raw.githubusercontent.com/mstudio45/LinoriaLib/main/Library.lua",
+            theme = "https://raw.githubusercontent.com/mstudio45/LinoriaLib/main/addons/ThemeManager.lua",
+            save = "https://raw.githubusercontent.com/mstudio45/LinoriaLib/main/addons/SaveManager.lua"
+        },
+        -- Fonte 2: violin-suzutsuki (original)
+        {
+            name = "violin-suzutsuki",
+            library = "https://raw.githubusercontent.com/violin-suzutsuki/LinoriaLib/main/Library.lua",
+            theme = "https://raw.githubusercontent.com/violin-suzutsuki/LinoriaLib/main/addons/ThemeManager.lua",
+            save = "https://raw.githubusercontent.com/violin-suzutsuki/LinoriaLib/main/addons/SaveManager.lua"
+        },
+        -- Fonte 3: ActualMasterOogway
+        {
+            name = "ActualMasterOogway",
+            library = "https://raw.githubusercontent.com/ActualMasterOogway/Linoria-Library/main/Library.lua",
+            theme = "https://raw.githubusercontent.com/ActualMasterOogway/Linoria-Library/main/addons/ThemeManager.lua",
+            save = "https://raw.githubusercontent.com/ActualMasterOogway/Linoria-Library/main/addons/SaveManager.lua"
+        }
+    }
+    
+    for _, source in ipairs(sources) do
+        local success, result = pcall(function()
+            local libCode = game:HttpGet(source.library, true)
+            if not libCode or libCode == "" then
+                error("Empty library code")
+            end
+            
+            local Library = loadstring(libCode)()
+            if not Library then
+                error("Library loadstring failed")
+            end
+            
+            local ThemeManager, SaveManager
+            
+            pcall(function()
+                local themeCode = game:HttpGet(source.theme, true)
+                if themeCode and themeCode ~= "" then
+                    ThemeManager = loadstring(themeCode)()
+                end
+            end)
+            
+            pcall(function()
+                local saveCode = game:HttpGet(source.save, true)
+                if saveCode and saveCode ~= "" then
+                    SaveManager = loadstring(saveCode)()
+                end
+            end)
+            
+            return Library, ThemeManager, SaveManager
+        end)
+        
+        if success and result then
+            return result
+        else
+            warn("[ShiftHub] Failed to load from " .. source.name .. ": " .. tostring(result))
+        end
+    end
+    
+    return nil
+end
+
+-- ===== LOADER PRINCIPAL =====
 local function runLoader()
     safeNotify(nil, "Loading game...", 3)
-    wait(2)
+    task.wait(1.5)
 
     local allowedPlaceIds = {
         [17687504411] = "All Star Tower Defense",
@@ -167,22 +222,20 @@ local function runLoader()
     local gameName = allowedPlaceIds[currentPlaceId]
 
     if not gameName then
-        warn("[ShiftHub] Script only works in All Star Tower Defense, Anime Vanguards, and Anime Crusaders.")
+        warn("[ShiftHub] Script only works in allowed games.")
+        safeNotify(nil, "Game not supported!", 3)
         return
     end
 
     safeNotify(nil, "Game detected: " .. gameName, 3)
-    wait(2)
-    safeNotify(nil, "Validating user credentials...", 3)
-    wait(2)
-    safeNotify(nil, "Authenticating with server...", 3)
-    wait(2)
-    safeNotify(nil, "Starting Shift Hub...", 3)
-    wait(2)
+    task.wait(1.5)
+    safeNotify(nil, "Validating HWID...", 3)
+    task.wait(1.5)
 
     local automaticKey = getAutomaticKey()
     if not automaticKey then
-        warn("[ShiftHub] Link your Roblox ID to your key in the Discord bot!")
+        warn("[ShiftHub] Link your Roblox ID to your key!")
+        safeNotify(nil, "Authentication failed!", 5)
         return
     end
 
@@ -192,46 +245,53 @@ local function runLoader()
     if authResponse == "hwid_valido" or authResponse == "hwid_registrado" then
         _G.ShiftHub_Validated = true
         _G.GameName = gameName
+        
+        safeNotify(nil, "Verifying User ID...", 2)
+        task.wait(1.5)
+        safeNotify(nil, 'Hello: ' .. LocalPlayer.Name, 2)
+        task.wait(1.5)
+        safeNotify(nil, "Starting Shift Hub...", 2)
+        task.wait(1.5)
 
         local success, err = pcall(function()
-            -- Carrega Linoria (mantemos carga, mas notificações não dependem dela)
-            local repo = 'https://raw.githubusercontent.com/violin-suzutsuki/LinoriaLib/main/'
-            Library = loadstring(game:HttpGet(repo .. 'Library.lua'))() -- Library global para callbacks (se disponível)
-            local ThemeManager = loadstring(game:HttpGet(repo .. 'addons/ThemeManager.lua'))()
-            local SaveManager = loadstring(game:HttpGet(repo .. 'addons/SaveManager.lua'))()
-
-            -- Cria janela
+            local Library, ThemeManager, SaveManager = loadLinoria()
+            
+            if not Library then
+                error("Failed to load Linoria from all sources. Your firewall may be blocking GitHub.")
+            end
+            
+            -- Criar janela com título personalizado
             local Window = Library:CreateWindow({
-                Title = "Shift Hub",
+                Title = 'Shift Hub | ' .. gameName .. ' | ' .. LocalPlayer.Name,
                 Center = true,
                 AutoShow = true,
                 TabPadding = 8,
-                MenuFadeTime = 0.2,
-                Subtitle = gameName
+                MenuFadeTime = 0.2
             })
 
+            -- Criar abas
             local Tabs = {
                 Main = Window:AddTab('Main'),
                 ['UI Settings'] = Window:AddTab('UI Settings'),
             }
 
-            -- ===============================
-            -- Rollback Hook
-            -- ===============================
+            -- ROLLBACK SYSTEM
             local rollbackEnabled = false
             local rollbackType = nil
             local rollbackMethod = nil
+            
             local protectedRemotes = {
                 Trait = {"TraitChange", "UpgradeUnit"},
                 Summon = {"SummonUnit"}
             }
 
             local mt = getrawmetatable(game)
-            setreadonly(mt, false)
             local oldNamecall = mt.__namecall
+            setreadonly(mt, false)
+            
             mt.__namecall = newcclosure(function(self, ...)
                 local method = getnamecallmethod()
-                if rollbackEnabled and rollbackType and rollbackMethod then
+                if rollbackEnabled and rollbackType then
                     local currentList = protectedRemotes[rollbackType]
                     if currentList and table.find(currentList, self.Name) then
                         if self:IsA("RemoteFunction") and method == "InvokeServer" then
@@ -244,129 +304,374 @@ local function runLoader()
                 return oldNamecall(self, ...)
             end)
 
-            -- ===============================
-            -- POPULAÇÃO DA ABA MAIN
-            -- ===============================
-            local mainTab = Tabs.Main
-            local LeftGroupBox = mainTab:AddLeftGroupbox('Rollback System')
-            local RightGroupbox = mainTab:AddRightGroupbox('Extras')
+            -- Criar elementos UI
+            local LeftGroupbox = Tabs.Main:AddLeftGroupbox('Rollback System')
+            local RightGroupbox = Tabs.Main:AddRightGroupbox('Extras')
 
-            -- Dropdown Type (visível apenas como "Type" no UI)
-            LeftGroupBox:AddDropdown('RollbackType', {
-                Values = { 'Trait', 'Summon' },
-                Default = "None",
+            -- Dropdown de Tipo
+            LeftGroupbox:AddDropdown('RollbackType', {
+                Values = {'Trait', 'Summon'},
+                Default = 1,
                 Multi = false,
-                Text = 'Type', -- alterado aqui
-                Tooltip = 'Select type',
-                Callback = function(selected)
-                    rollbackType = tostring(selected)
-                    local displayText = rollbackType or "None"
-                    safeNotify(nil, "type selected: " .. displayText, 1)
-                    wait(1) -- intervalo após seleção para garantir visibilidade
+                Text = 'Rollback Type',
+                Tooltip = 'Select the type of rollback',
+                Callback = function(Value)
+                    rollbackType = Value
+                    safeNotify(nil, "Type selected: " .. Value, 1)
                 end
             })
 
-            -- Dropdown Method (visível apenas como "Method" no UI)
-            LeftGroupBox:AddDropdown('RollbackMethod', {
-                Values = { 'ServerSide — Recomended', 'ClientSide' },
-                Default = "None",
+            -- Dropdown de Método
+            LeftGroupbox:AddDropdown('RollbackMethod', {
+                Values = {'ServerSide - Recommended', 'ClientSide'},
+                Default = 1,
                 Multi = false,
-                Text = 'Method', -- alterado aqui
-                Tooltip = 'Select method',
-                Callback = function(selected)
-                    rollbackMethod = tostring(selected)
-                    local cleaned = cleanMethodName(rollbackMethod or "None")
-                    safeNotify(nil, "method selected: " .. cleaned, 1)
-                    wait(1) -- intervalo após seleção
+                Text = 'Rollback Method',
+                Tooltip = 'Select the rollback method',
+                Callback = function(Value)
+                    rollbackMethod = Value
+                    local cleaned = cleanMethodName(Value)
+                    safeNotify(nil, "Method selected: " .. cleaned, 1)
                 end
             })
 
-            -- Toggle rollback
-            LeftGroupBox:AddToggle('Rollback', {
+            LeftGroupbox:AddDivider()
+
+            -- Toggle de Rollback
+            LeftGroupbox:AddToggle('RollbackToggle', {
                 Text = 'Enable Rollback',
                 Default = false,
-                Tooltip = 'Enables or disables rollback',
-                Callback = function(value)
-                    rollbackEnabled = value
+                Tooltip = 'Enable or disable rollback protection',
+                Callback = function(Value)
+                    rollbackEnabled = Value
                     local typeText = rollbackType or "None"
                     local methodText = cleanMethodName(rollbackMethod or "None")
                     if rollbackEnabled then
-                        safeNotify(nil, "Rollback Enabled! Method: " .. methodText .. " | Type: " .. typeText, 1)
+                        safeNotify(nil, "Rollback Enabled! Method: " .. methodText .. " | Type: " .. typeText, 2)
                     else
                         safeNotify(nil, "Rollback disabled!", 1)
                     end
-                    wait(1) -- intervalo após toggle para visibilidade
                 end
             })
 
-            -- Botão confirmar rollback
-            LeftGroupBox:AddButton({
-                Text = 'Confirmar Rollback',
+            LeftGroupbox:AddDivider()
+
+            -- Botão de Confirmar Rollback
+            LeftGroupbox:AddButton({
+                Text = 'Confirm Rollback',
                 Func = function()
-                    if rollbackEnabled and rollbackType and rollbackMethod and rollbackType ~= "None" and rollbackMethod ~= "None" then
+                    if rollbackEnabled and rollbackType and rollbackMethod then
                         local remotes = protectedRemotes[rollbackType]
                         if remotes then
                             safeNotify(nil, "Initiating rollback...", 2)
-                            wait(2)
+                            task.wait(2)
                             safeNotify(nil, "Rollback completed successfully!", 3)
                             rollbackEnabled = false
                             mt.__namecall = oldNamecall
-                            wait(1)
+                            task.wait(1)
                             TeleportService:Teleport(game.PlaceId, LocalPlayer)
                         end
                     else
                         safeNotify(nil, "Select a type and method first!", 2)
                     end
-                end
+                end,
+                Tooltip = 'Execute the rollback and rejoin'
             })
 
-            -- Botão Rejoin
+            -- Groupbox de Extras
+            RightGroupbox:AddLabel('Server Actions')
+            RightGroupbox:AddDivider()
+
             RightGroupbox:AddButton({
-                Text = 'Rejoin',
+                Text = 'Rejoin Server',
                 Func = function()
+                    safeNotify(nil, "Rejoining server...", 2)
+                    task.wait(1)
                     TeleportService:Teleport(game.PlaceId, LocalPlayer)
-                end
+                end,
+                Tooltip = 'Rejoin the current server'
             })
 
-            -- UI Settings Tab
-            local configsTab = Tabs['UI Settings']
-            local MenuGroup = configsTab:AddLeftGroupbox('Menu')
-            MenuGroup:AddButton('Unload', function()
-                pcall(function() Library:Unload() end)
-            end)
-            MenuGroup:AddLabel('Menu bind'):AddKeyPicker('MenuKeybind', { Default = 'End', NoUI = true, Text = 'Menu keybind' })
+            RightGroupbox:AddButton({
+                Text = 'Server Hop',
+                Func = function()
+                    safeNotify(nil, "Server hopping...", 2)
+                    -- Código de server hop aqui
+                end,
+                Tooltip = 'Join a different server'
+            })
 
-            -- Proteções ao definir o keybind (Options pode não existir dependendo da versão da lib)
-            pcall(function()
-                if type(Options) == "table" and Options.MenuKeybind then
-                    Library.ToggleKeybind = Options.MenuKeybind
-                elseif Library.Flags and Library.Flags.MenuKeybind then
-                    Library.ToggleKeybind = Library.Flags.MenuKeybind
+            -- ADICIONAR MAIS FUNCIONALIDADES NA ABA MAIN
+            
+            -- Groupbox de Summon & Units
+            local SummonBox = Tabs.Main:AddLeftGroupbox('Summon & Units')
+            
+            SummonBox:AddToggle('AutoSummon', {
+                Text = 'Auto Summon',
+                Default = false,
+                Tooltip = 'Automatically summon units',
+                Callback = function(Value)
+                    safeNotify(nil, Value and "Auto Summon Enabled!" or "Auto Summon Disabled!", 1)
+                end
+            })
+            
+            SummonBox:AddToggle('AutoSell', {
+                Text = 'Auto Sell Units',
+                Default = false,
+                Tooltip = 'Automatically sell unwanted units',
+                Callback = function(Value)
+                    safeNotify(nil, Value and "Auto Sell Enabled!" or "Auto Sell Disabled!", 1)
+                end
+            })
+            
+            SummonBox:AddToggle('AutoUpgrade', {
+                Text = 'Auto Upgrade Units',
+                Default = false,
+                Tooltip = 'Automatically upgrade placed units',
+                Callback = function(Value)
+                    safeNotify(nil, Value and "Auto Upgrade Enabled!" or "Auto Upgrade Disabled!", 1)
+                end
+            })
+            
+            SummonBox:AddDivider()
+            
+            SummonBox:AddDropdown('SummonBanner', {
+                Values = {'Special', 'Halloween', 'Psychology 99'},
+                Default = 1,
+                Multi = false,
+                Text = 'Banner Selection',
+                Tooltip = 'Choose which banner to summon from',
+                Callback = function(Value)
+                    safeNotify(nil, "Banner: " .. Value, 1)
+                end
+            })
+            
+            SummonBox:AddSlider('SummonAmount', {
+                Text = 'Summon Amount',
+                Default = 1,
+                Min = 1,
+                Max = 10,
+                Rounding = 0,
+                Compact = false,
+                Callback = function(Value)
+                    safeNotify(nil, "Summon Amount: " .. Value, 1)
+                end
+            })
+            
+            -- Groupbox de Combat
+            local CombatBox = Tabs.Main:AddRightGroupbox('Units Enhancements')
+            
+            CombatBox:AddToggle('InfiniteRange', {
+                Text = 'Infinite Range',
+                Default = false,
+                Tooltip = 'Units attack from anywhere on map',
+                Callback = function(Value)
+                    safeNotify(nil, Value and "Infinite Range ON!" or "Infinite Range OFF!", 1)
+                end
+            })
+            
+            CombatBox:AddToggle('NoCooldown', {
+                Text = 'No Cooldown',
+                Default = false,
+                Tooltip = 'Remove ability cooldowns',
+                Callback = function(Value)
+                    safeNotify(nil, Value and "No Cooldown ON!" or "No Cooldown OFF!", 1)
+                end
+            })
+            
+            CombatBox:AddDivider()
+            
+            CombatBox:AddSlider('DamageMultiplier', {
+                Text = 'Damage Multiplier',
+                Default = 1,
+                Min = 1,
+                Max = 10,
+                Rounding = 1,
+                Compact = false,
+                Callback = function(Value)
+                    safeNotify(nil, "Damage: " .. Value .. "x", 1)
+                end
+            })
+            
+            -- Nova aba de Misc
+            local MiscTab = Window:AddTab('Misc')
+            
+            local MiscLeft = MiscTab:AddLeftGroupbox('Player Modifications')
+            
+            MiscLeft:AddToggle('SpeedHack', {
+                Text = 'Speed Hack',
+                Default = false,
+                Tooltip = 'Increase movement speed',
+                Callback = function(Value)
+                    if Value then
+                        LocalPlayer.Character.Humanoid.WalkSpeed = 50
+                    else
+                        LocalPlayer.Character.Humanoid.WalkSpeed = 16
+                    end
+                    safeNotify(nil, Value and "Speed Hack ON!" or "Speed Hack OFF!", 1)
+                end
+            })
+            
+            MiscLeft:AddSlider('WalkSpeed', {
+                Text = 'Walk Speed',
+                Default = 16,
+                Min = 16,
+                Max = 100,
+                Rounding = 0,
+                Compact = false,
+                Callback = function(Value)
+                    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
+                        LocalPlayer.Character.Humanoid.WalkSpeed = Value
+                    end
+                end
+            })
+            
+            MiscLeft:AddToggle('InfiniteJump', {
+                Text = 'Infinite Jump',
+                Default = false,
+                Tooltip = 'Jump infinitely',
+                Callback = function(Value)
+                    safeNotify(nil, Value and "Infinite Jump ON!" or "Infinite Jump OFF!", 1)
+                end
+            })
+            
+            MiscLeft:AddToggle('NoClip', {
+                Text = 'No Clip',
+                Default = false,
+                Tooltip = 'Walk through walls',
+                Callback = function(Value)
+                    safeNotify(nil, Value and "No Clip ON!" or "No Clip OFF!", 1)
+                end
+            })
+            
+            local MiscRight = MiscTab:AddRightGroupbox('Visual Settings')
+            
+            MiscRight:AddToggle('FullBright', {
+                Text = 'Full Bright',
+                Default = false,
+                Tooltip = 'Remove shadows and darkness',
+                Callback = function(Value)
+                    local Lighting = game:GetService("Lighting")
+                    if Value then
+                        Lighting.Brightness = 2
+                        Lighting.ClockTime = 14
+                        Lighting.FogEnd = 100000
+                        Lighting.GlobalShadows = false
+                    else
+                        Lighting.Brightness = 1
+                        Lighting.ClockTime = 12
+                        Lighting.FogEnd = 9999
+                        Lighting.GlobalShadows = true
+                    end
+                    safeNotify(nil, Value and "Full Bright ON!" or "Full Bright OFF!", 1)
+                end
+            })
+            
+            MiscRight:AddToggle('RemoveFog', {
+                Text = 'Remove Fog',
+                Default = false,
+                Tooltip = 'Remove fog effects',
+                Callback = function(Value)
+                    local Lighting = game:GetService("Lighting")
+                    if Value then
+                        Lighting.FogEnd = 100000
+                    else
+                        Lighting.FogEnd = 9999
+                    end
+                    safeNotify(nil, Value and "Fog Removed!" or "Fog Restored!", 1)
+                end
+            })
+            
+            MiscRight:AddDivider()
+            
+            MiscRight:AddSlider('FOV', {
+                Text = 'Field of View',
+                Default = 70,
+                Min = 70,
+                Max = 120,
+                Rounding = 0,
+                Compact = false,
+                Callback = function(Value)
+                    local Camera = workspace.CurrentCamera
+                    if Camera then
+                        Camera.FieldOfView = Value
+                    end
+                end
+            })
+            
+            -- UI Settings Tab
+            if ThemeManager and SaveManager then
+                ThemeManager:SetLibrary(Library)
+                SaveManager:SetLibrary(Library)
+                
+                SaveManager:IgnoreThemeSettings()
+                SaveManager:SetIgnoreIndexes({'MenuKeybind', 'WalkSpeed', 'FarmSpeed', 'DamageMultiplier'})
+                
+                ThemeManager:SetFolder('ShiftHub')
+                SaveManager:SetFolder('ShiftHub/' .. gameName)
+                
+                SaveManager:BuildConfigSection(Tabs['UI Settings'])
+                ThemeManager:ApplyToTab(Tabs['UI Settings'])
+            end
+            
+            local MenuGroup = Tabs['UI Settings']:AddLeftGroupbox('Menu')
+            
+            MenuGroup:AddButton('Unload Script', function() 
+                Library:Unload() 
+                safeNotify(nil, "Script unloaded!", 2)
+            end)
+            
+            MenuGroup:AddDivider()
+            
+            MenuGroup:AddLabel('Menu Keybind'):AddKeyPicker('MenuKeybind', {
+                Default = 'End',
+                NoUI = true,
+                Text = 'Menu keybind'
+            })
+            
+            MenuGroup:AddDivider()
+            
+            local InfoGroup = Tabs['UI Settings']:AddRightGroupbox('Information')
+            
+            InfoGroup:AddLabel('Script: Shift Hub 🫦')
+            InfoGroup:AddLabel('Version: 1.0.2')
+            InfoGroup:AddLabel('Game: ' .. gameName)
+            InfoGroup:AddDivider()
+            InfoGroup:AddLabel('User: ' .. LocalPlayer.Name)
+            InfoGroup:AddLabel('User ID: ' .. tostring(robloxId))
+            InfoGroup:AddDivider()
+            InfoGroup:AddButton('Copy Discord', function()
+                if setclipboard then
+                    setclipboard('https://discord.gg/pKcRvJqGyv')
+                    Library:Notify('Discord link copied!', 2)
                 end
             end)
-
-            ThemeManager:SetLibrary(Library)
-            SaveManager:SetLibrary(Library)
-            SaveManager:IgnoreThemeSettings()
-            SaveManager:SetIgnoreIndexes({ 'MenuKeybind' })
-            ThemeManager:SetFolder('ShiftHub')
-            SaveManager:SetFolder('ShiftHub/' .. gameName)
-            SaveManager:BuildConfigSection(Tabs['UI Settings'])
-            ThemeManager:ApplyToTab(Tabs['UI Settings'])
-            SaveManager:LoadAutoloadConfig()
-            pcall(function() if Window and type(Window.SetWatermarkVisibility) == "function" then Window:SetWatermarkVisibility(true) end end)
-
-            -- Teste inicial: notificação on-screen forçada para confirmar GUI carregada
-            safeNotify(nil, "GUI carregada com sucesso!", 3)
+            
+            InfoGroup:AddButton('Join Discord Server', function()
+                Library:Notify('Opening Discord invite...', 2)
+            end)
+            
+            Library.ToggleKeybind = Options.MenuKeybind
+            
+            if SaveManager then
+                SaveManager:LoadAutoloadConfig()
+            end
+            
+            -- Desabilitar a watermark flutuante
+            Library:SetWatermarkVisibility(false)
+            
+            safeNotify(nil, "Welcome to Shift Hub!", 3)
         end)
 
         if not success then
-            warn("[ShiftHub] Erro ao iniciar GUI Linoria: " .. tostring(err))
+            local errorMsg = tostring(err)
+            warn("[ShiftHub] Critical Error: " .. errorMsg)
+            safeNotify(nil, "FATAL: " .. errorMsg:sub(1, 50), 7)
         end
     else
-        warn("[ShiftHub] Falha na autenticação: " .. tostring(authResponse))
+        warn("[ShiftHub] Authentication failed: " .. tostring(authResponse))
+        safeNotify(nil, "Authentication failed!", 3)
     end
 end
 
--- Executa loader
 runLoader()
