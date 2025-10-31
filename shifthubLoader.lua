@@ -666,7 +666,7 @@ local function runLoader()
         if not success then
             local errorMsg = tostring(err)
             warn("[ShiftHub] Critical Error: " .. errorMsg)
-            safeNotify(nil, "FATAL: " .. errorMsg:sub(1, 50), 7)
+            --safeNotify(nil, "FATAL: " .. errorMsg:sub(1, 50), 7)
         end
     else
         warn("[ShiftHub] Authentication failed: " .. tostring(authResponse))
@@ -675,3 +675,4 @@ local function runLoader()
 end
 
 runLoader()
+
