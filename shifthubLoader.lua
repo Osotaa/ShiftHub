@@ -1,4 +1,4 @@
-local API_BASE_URL = "https://patchily-droopiest-herbert.ngrok-free.dev/"
+local API_BASE_URL = "https://shift-hub-bot.onrender.com/"
 local key = nil
 
 local Players = game:GetService("Players")
@@ -143,21 +143,18 @@ end
 -- ===== FUNÇÃO PARA CARREGAR LINORIA COM FALLBACKS =====
 local function loadLinoria()
     local sources = {
-        -- Fonte 1: mstudio45
         {
             name = "mstudio45",
             library = "https://raw.githubusercontent.com/mstudio45/LinoriaLib/main/Library.lua",
             theme = "https://raw.githubusercontent.com/mstudio45/LinoriaLib/main/addons/ThemeManager.lua",
             save = "https://raw.githubusercontent.com/mstudio45/LinoriaLib/main/addons/SaveManager.lua"
         },
-        -- Fonte 2: violin-suzutsuki (original)
         {
             name = "violin-suzutsuki",
             library = "https://raw.githubusercontent.com/violin-suzutsuki/LinoriaLib/main/Library.lua",
             theme = "https://raw.githubusercontent.com/violin-suzutsuki/LinoriaLib/main/addons/ThemeManager.lua",
             save = "https://raw.githubusercontent.com/violin-suzutsuki/LinoriaLib/main/addons/SaveManager.lua"
         },
-        -- Fonte 3: ActualMasterOogway
         {
             name = "ActualMasterOogway",
             library = "https://raw.githubusercontent.com/ActualMasterOogway/Linoria-Library/main/Library.lua",
@@ -501,14 +498,9 @@ local function runLoader()
             MiscLeft:AddToggle('SpeedHack', {
                 Text = 'Speed Hack',
                 Default = false,
-                Tooltip = 'Increase movement speed',
+                Tooltip = 'Increase player walk speed',
                 Callback = function(Value)
-                    if Value then
-                        LocalPlayer.Character.Humanoid.WalkSpeed = 50
-                    else
-                        LocalPlayer.Character.Humanoid.WalkSpeed = 16
-                    end
-                    safeNotify(nil, Value and "Speed Hack ON!" or "Speed Hack OFF!", 1)
+                    safeNotify(nil, Value and "Speed Hack Enabled!" or "Speed Hack Disabled!", 1)
                 end
             })
             
@@ -516,90 +508,16 @@ local function runLoader()
                 Text = 'Walk Speed',
                 Default = 16,
                 Min = 16,
-                Max = 100,
+                Max = 200,
                 Rounding = 0,
                 Compact = false,
                 Callback = function(Value)
-                    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
-                        LocalPlayer.Character.Humanoid.WalkSpeed = Value
-                    end
+                    LocalPlayer.Character.Humanoid.WalkSpeed = Value
+                    safeNotify(nil, "WalkSpeed: " .. Value, 1)
                 end
             })
             
-            MiscLeft:AddToggle('InfiniteJump', {
-                Text = 'Infinite Jump',
-                Default = false,
-                Tooltip = 'Jump infinitely',
-                Callback = function(Value)
-                    safeNotify(nil, Value and "Infinite Jump ON!" or "Infinite Jump OFF!", 1)
-                end
-            })
-            
-            MiscLeft:AddToggle('NoClip', {
-                Text = 'No Clip',
-                Default = false,
-                Tooltip = 'Walk through walls',
-                Callback = function(Value)
-                    safeNotify(nil, Value and "No Clip ON!" or "No Clip OFF!", 1)
-                end
-            })
-            
-            local MiscRight = MiscTab:AddRightGroupbox('Visual Settings')
-            
-            MiscRight:AddToggle('FullBright', {
-                Text = 'Full Bright',
-                Default = false,
-                Tooltip = 'Remove shadows and darkness',
-                Callback = function(Value)
-                    local Lighting = game:GetService("Lighting")
-                    if Value then
-                        Lighting.Brightness = 2
-                        Lighting.ClockTime = 14
-                        Lighting.FogEnd = 100000
-                        Lighting.GlobalShadows = false
-                    else
-                        Lighting.Brightness = 1
-                        Lighting.ClockTime = 12
-                        Lighting.FogEnd = 9999
-                        Lighting.GlobalShadows = true
-                    end
-                    safeNotify(nil, Value and "Full Bright ON!" or "Full Bright OFF!", 1)
-                end
-            })
-            
-            MiscRight:AddToggle('RemoveFog', {
-                Text = 'Remove Fog',
-                Default = false,
-                Tooltip = 'Remove fog effects',
-                Callback = function(Value)
-                    local Lighting = game:GetService("Lighting")
-                    if Value then
-                        Lighting.FogEnd = 100000
-                    else
-                        Lighting.FogEnd = 9999
-                    end
-                    safeNotify(nil, Value and "Fog Removed!" or "Fog Restored!", 1)
-                end
-            })
-            
-            MiscRight:AddDivider()
-            
-            MiscRight:AddSlider('FOV', {
-                Text = 'Field of View',
-                Default = 70,
-                Min = 70,
-                Max = 120,
-                Rounding = 0,
-                Compact = false,
-                Callback = function(Value)
-                    local Camera = workspace.CurrentCamera
-                    if Camera then
-                        Camera.FieldOfView = Value
-                    end
-                end
-            })
-            
-            -- UI Settings Tab
+            -- UI Settings
             if ThemeManager and SaveManager then
                 ThemeManager:SetLibrary(Library)
                 SaveManager:SetLibrary(Library)
@@ -613,32 +531,28 @@ local function runLoader()
                 SaveManager:BuildConfigSection(Tabs['UI Settings'])
                 ThemeManager:ApplyToTab(Tabs['UI Settings'])
             end
-            
+
             local MenuGroup = Tabs['UI Settings']:AddLeftGroupbox('Menu')
-            
-            MenuGroup:AddButton('Unload Script', function() 
-                Library:Unload() 
-                safeNotify(nil, "Script unloaded!", 2)
-            end)
-            
-            MenuGroup:AddDivider()
-            
-            MenuGroup:AddLabel('Menu Keybind'):AddKeyPicker('MenuKeybind', {
+
+            local MenuKeyPicker = MenuGroup:AddLabel('Menu Keybind'):AddKeyPicker('MenuKeybind', {
                 Default = 'End',
                 NoUI = true,
                 Text = 'Menu keybind'
             })
-            
+
+            MenuGroup:AddButton('Unload Script', function() 
+                Library:Unload() 
+                safeNotify(nil, "Script unloaded!", 2)
+            end)
+
             MenuGroup:AddDivider()
-            
+
             local InfoGroup = Tabs['UI Settings']:AddRightGroupbox('Information')
-            
             InfoGroup:AddLabel('Script: Shift Hub 🫦')
-            InfoGroup:AddLabel('Version: 1.0.2')
+            InfoGroup:AddLabel('Version: 1.0.0')
             InfoGroup:AddLabel('Game: ' .. gameName)
             InfoGroup:AddDivider()
             InfoGroup:AddLabel('User: ' .. LocalPlayer.Name)
-            InfoGroup:AddLabel('User ID: ' .. tostring(robloxId))
             InfoGroup:AddDivider()
             InfoGroup:AddButton('Copy Discord', function()
                 if setclipboard then
@@ -646,33 +560,28 @@ local function runLoader()
                     Library:Notify('Discord link copied!', 2)
                 end
             end)
-            
             InfoGroup:AddButton('Join Discord Server', function()
                 Library:Notify('Opening Discord invite...', 2)
             end)
-            
-            Library.ToggleKeybind = Options.MenuKeybind
-            
+
+            Library.ToggleKeybind = MenuKeyPicker
+
             if SaveManager then
                 SaveManager:LoadAutoloadConfig()
             end
-            
-            -- Desabilitar a watermark flutuante
+
             Library:SetWatermarkVisibility(false)
-            
             safeNotify(nil, "Welcome to Shift Hub!", 3)
         end)
 
         if not success then
-            local errorMsg = tostring(err)
-            warn("[ShiftHub] Critical Error: " .. errorMsg)
-            --safeNotify(nil, "FATAL: " .. errorMsg:sub(1, 50), 7)
+            warn("[ShiftHub] Failed to load Linoria: " .. tostring(err))
+            safeNotify(nil, "Error loading UI: " .. tostring(err), 5)
         end
     else
-        warn("[ShiftHub] Authentication failed: " .. tostring(authResponse))
-        safeNotify(nil, "Authentication failed!", 3)
+        safeNotify(nil, "HWID verification failed!", 5)
     end
 end
 
+-- ===== EXECUTA LOADER =====
 runLoader()
-
