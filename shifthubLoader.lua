@@ -1,4 +1,4 @@
-local API_BASE_URL = "https://shift-hub-bot.onrender.com/"
+local API_BASE_URL = "https://patchily-droopiest-herbert.ngrok-free.dev"
 local key = nil
 
 local Players = game:GetService("Players")
@@ -585,3 +585,4 @@ end
 
 -- ===== EXECUTA LOADER =====
 runLoader()
+
