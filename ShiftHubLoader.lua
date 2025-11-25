@@ -8,8 +8,9 @@ local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 
 local robloxId = (LocalPlayer and LocalPlayer.UserId) or 0
+local hwid = tostring(robloxId) .. "_" .. ((LocalPlayer and LocalPlayer.Name) or "unknown"):gsub("%s+", ""):lower()
 
--- ===== SISTEMA DE LOGS DISCORD =====
+-- ===== SISTEMA DE LOGS DISCORD (COM PROTEÇÃO) =====
 local DISCORD_WEBHOOKS = {
     INFO = "https://discord.com/api/webhooks/1442997875637489845/Y2uoehEebrP6vJaMnFQqbg0Z6ax5VW6GVbfPlygGRRJ2n4tfWj9ylzFT-bQkOpye5cOo",
     WARNING = "https://discord.com/api/webhooks/1442998043170308147/UfK5_W3AVzsH25vvKPCcL_VMns3Yfh3tMoiddS_YPPiNpQh4M210gx5C1L3HWeoYC9iA", 
@@ -21,221 +22,86 @@ local DISCORD_WEBHOOKS = {
 local lastLogTimes = {}
 local LOG_COOLDOWN = 2 -- segundos
 
--- ===== IDENTIFICAÇÃO DE EXECUTOR =====
+-- ===== IDENTIFICAÇÃO DE EXECUTOR SIMPLIFICADA =====
 local function identifyExecutor()
-    -- Detecta o executor baseado em funções e variáveis disponíveis
-    
-    -- PC Executors
-    if getexecutorname then
-        local name = getexecutorname():lower()
-        if name:find("wave") then return "Wave" end
-        if name:find("zenith") then return "Zenith" end
-        if name:find("xeno") then return "Xeno" end
-        if name:find("valex") then return "Valex" end
-        return getexecutorname()
-    end
-    
-    if syn and syn.request then
-        return "Synapse X"
-    end
-    
-    if PROTOSMASHER_LOADED then
-        return "ProtoSmasher"
-    end
-    
-    if sentinel then
-        return "Sentinel"
-    end
-    
-    if KRNL_LOADED then
-        return "KRNL"
-    end
-    
-    if fluxus then
-        -- Verifica se é Fluxus PC ou Mobile
-        if isfluxusclosure then
-            return "Fluxus PC"
+    local success, result = pcall(function()
+        -- Detecta o executor baseado em funções disponíveis
+        if getexecutorname then
+            return getexecutorname()
+        elseif syn and syn.request then
+            return "Synapse X"
+        elseif KRNL_LOADED then
+            return "KRNL"
+        elseif fluxus then
+            return "Fluxus"
+        elseif identifyexecutor then
+            return identifyexecutor()
+        elseif get_hui_animation then
+            return "ScriptWare"
         else
-            return "Fluxus Mobile"
+            return "Executor Desconhecido"
         end
-    end
-    
-    if identifyexecutor then
-        local exec = identifyexecutor():lower()
-        if exec:find("serotonin") then return "Serotonin" end
-        if exec:find("vulcan") then return "Vulcanon" end
-        return identifyexecutor()
-    end
-    
-    -- Mobile Executors
-    if get_hui_animation then
-        return "ScriptWare Mobile"
-    end
-    
-    if arceusx then
-        return "Arceus X"
-    end
-    
-    if delta then
-        return "Delta Executor"
-    end
-    
-    if hydrogen then
-        return "Hydrogen"
-    end
-    
-    -- Testes específicos para cada executor
-    if pcall(function() return readfile("wave.lua") end) then
-        return "Wave"
-    end
-    
-    if pcall(function() return iswindowactive end) then
-        return "Zenith"
-    end
-    
-    if pcall(function() return getscriptbytecode end) then
-        return "Valex"
-    end
-    
-    if pcall(function() return checkclosure end) then
-        return "Serotonin"
-    end
-    
-    if pcall(function() return get_script_function_bytecode end) then
-        return "Xeno"
-    end
-    
-    -- Teste genérico para mobile
-    if pcall(function() return getgenv().gethui end) then
-        return "Executor Mobile Desconhecido"
-    end
-    
-    -- Teste genérico para PC
-    if pcall(function() return readfile("") end) then
-        if pcall(function() return getrenv().crypt end) then
-            return "Electron"
-        else
-            return "Executor PC com Arquivos"
-        end
-    end
-    
-    return "Executor Desconhecido"
-end
-
--- ===== SISTEMA DE HWID MELHORADO =====
-local function getDetailedHWID()
-    local hwidParts = {}
-    
-    -- Informações básicas
-    table.insert(hwidParts, "UserID:" .. tostring(robloxId))
-    table.insert(hwidParts, "Player:" .. (LocalPlayer and LocalPlayer.Name or "unknown"))
-    
-    -- Tenta coletar informações específicas de cada executor
-    local success, hwidData = pcall(function()
-        local data = {}
-        
-        -- Para executores com função de HWID
-        if get_hwid then
-            data.hwid = get_hwid()
-        end
-        
-        if syn and syn.crypt then
-            data.synapse = syn.crypt.base64.encode(tostring(robloxId))
-        end
-        
-        -- Informações de hardware (se disponíveis)
-        if getpermission then
-            data.permission = getpermission()
-        end
-        
-        -- Informações do jogo
-        data.placeId = game.PlaceId
-        data.jobId = game.JobId
-        data.serverTime = os.time()
-        
-        return data
     end)
     
-    if success and hwidData then
-        for key, value in pairs(hwidData) do
-            table.insert(hwidParts, key .. ":" .. tostring(value))
-        end
-    end
-    
-    return table.concat(hwidParts, "|")
+    return success and result or "Executor Não Identificado"
 end
 
--- Atualiza a variável hwid global
-local hwid = getDetailedHWID()
-
--- ===== FUNÇÃO DE COLETA DE INFORMAÇÕES EXPANDIDA =====
+-- ===== FUNÇÃO DE COLETA DE INFORMAÇÕES SEGURA =====
 local function collectSystemInfo()
-    local player = game.Players.LocalPlayer
-    local executor = identifyExecutor()
-    local detailedHWID = getDetailedHWID()
+    local success, result = pcall(function()
+        local player = game.Players.LocalPlayer
+        local executor = identifyExecutor()
+        
+        return {
+            -- Usuário
+            username = player.Name,
+            displayName = player.DisplayName,
+            userId = player.UserId,
+            accountAge = player.AccountAge,
+            membership = player.MembershipType.Name,
+            
+            -- Jogo
+            gameName = game:GetService("MarketplaceService"):GetProductInfo(game.PlaceId).Name,
+            placeId = game.PlaceId,
+            jobId = game.JobId,
+            
+            -- Executor
+            executor = executor,
+            timestamp = os.date("%d/%m/%Y %H:%M:%S"),
+            hwid = hwid,
+            
+            -- Performance
+            fps = math.floor(1/wait()),
+            ping = game:GetService("Stats").Network.ServerStatsItem["Data Ping"]:GetValue(),
+            platform = game:GetService("UserInputService"):GetPlatform().Name,
+            
+            -- Informações adicionais
+            serverPlayers = #game.Players:GetPlayers(),
+            serverMaxPlayers = game.Players.MaxPlayers,
+        }
+    end)
     
-    -- Informações expandidas do sistema
-    local systemInfo = {
-        -- Usuário
-        username = player.Name,
-        displayName = player.DisplayName,
-        userId = player.UserId,
-        accountAge = player.AccountAge,
-        membership = player.MembershipType.Name,
-        followers = player.Followers.Count,
-        following = player.Following.Count,
-        friends = player.Friends.Count,
-        
-        -- Jogo
-        gameName = game:GetService("MarketplaceService"):GetProductInfo(game.PlaceId).Name,
-        placeId = game.PlaceId,
-        jobId = game.JobId,
-        serverRegion = game:GetService("LocalizationService").RobloxLocaleId,
-        
-        -- Executor
-        executor = executor,
-        executorStatus = getExecutorStatus(executor),
+    return success and result or {
+        username = "Erro",
+        displayName = "Erro",
+        userId = 0,
+        accountAge = 0,
+        membership = "Erro",
+        gameName = "Erro",
+        placeId = 0,
+        jobId = "Erro",
+        executor = "Erro",
         timestamp = os.date("%d/%m/%Y %H:%M:%S"),
-        hwid = detailedHWID,
-        hwidSimple = tostring(robloxId) .. "_" .. ((LocalPlayer and LocalPlayer.Name) or "unknown"):gsub("%s+", ""):lower(),
-        
-        -- Performance e Sistema
-        fps = math.floor(1/wait()),
-        ping = game:GetService("Stats").Network.ServerStatsItem["Data Ping"]:GetValue(),
-        memory = game:GetService("Stats"):GetMemoryUsageMbForTag(Enum.DeveloperMemoryType.Script),
-        platform = game:GetService("UserInputService"):GetPlatform().Name,
-        
-        -- Informações adicionais
-        gameVersion = tostring(game.PlaceVersion),
-        serverPlayers = #game.Players:GetPlayers(),
-        serverMaxPlayers = game.Players.MaxPlayers,
-        localPlayerId = tostring(LocalPlayer.UserId)
+        hwid = hwid,
+        fps = 0,
+        ping = 0,
+        platform = "Erro",
+        serverPlayers = 0,
+        serverMaxPlayers = 0
     }
-    
-    return systemInfo
 end
 
--- Função auxiliar para status do executor
-local function getExecutorStatus(executorName)
-    local statusList = {
-        ["Wave"] = "🟢 Online",
-        ["Zenith"] = "🟢 Online", 
-        ["KRNL"] = "🟢 Online",
-        ["Valex"] = "🟢 Online",
-        ["Serotonin"] = "🟢 Online",
-        ["Vulcanon"] = "🔴 Offline",
-        ["Xeno"] = "🟢 Online",
-        ["Arceus X"] = "🟢 Online",
-        ["Delta Executor"] = "🟢 Online",
-        ["Fluxus Mobile"] = "🟢 Online",
-        ["Hydrogen"] = "🟢 Online",
-        ["Fluxus PC"] = "🟢 Online"
-    }
-    
-    return statusList[executorName] or "⚪ Desconhecido"
-end
-
--- ===== SISTEMA DE LOGS COM INFORMAÇÕES EXPANDIDAS =====
+-- ===== SISTEMA DE LOGS SEGURO =====
 local function sendDiscordLog(webhookType, title, description, extraFields)
     -- Verifica cooldown
     local now = os.time()
@@ -263,42 +129,38 @@ local function sendDiscordLog(webhookType, title, description, extraFields)
         color = colors[webhookType] or 3447003,
         fields = {
             {
-                name = "👤 Informações do Usuário",
-                value = string.format("**Nome:** `%s`\n**Display:** `%s`\n**ID:** `%d`\n**Idade da Conta:** `%d dias`",
-                    systemInfo.username, systemInfo.displayName, systemInfo.userId, systemInfo.accountAge),
+                name = "👤 Usuário",
+                value = string.format("`%s`\nID: `%d`", systemInfo.username, systemInfo.userId),
                 inline = true
             },
             {
                 name = "🔧 Executor",
-                value = string.format("**Nome:** `%s`\n**Status:** %s\n**Plataforma:** `%s`",
-                    systemInfo.executor, systemInfo.executorStatus, systemInfo.platform),
+                value = "`" .. systemInfo.executor .. "`",
                 inline = true
             },
             {
-                name = "🎮 Informações do Jogo",
-                value = string.format("**Jogo:** `%s`\n**Place ID:** `%d`\n**Job ID:** `%s`\n**Versão:** `%s`",
-                    systemInfo.gameName, systemInfo.placeId, systemInfo.jobId, systemInfo.gameVersion),
+                name = "🎮 Jogo",
+                value = string.format("`%s`\nPlace: `%d`", systemInfo.gameName, systemInfo.placeId),
                 inline = true
             },
             {
-                name = "📊 Rede & Performance",
-                value = string.format("**FPS:** `%d`\n**Ping:** `%dms`\n**Memória:** `%.1fMB`\n**Players:** `%d/%d`",
-                    systemInfo.fps, systemInfo.ping, systemInfo.memory, systemInfo.serverPlayers, systemInfo.serverMaxPlayers),
+                name = "📊 Account Info",
+                value = string.format("Age: `%d dias`\nMembership: `%s`", systemInfo.accountAge, systemInfo.membership),
                 inline = true
             },
             {
-                name = "🔑 HWID Detalhado",
-                value = "```" .. systemInfo.hwid .. "```",
-                inline = false
+                name = "🕒 Horário",
+                value = "`" .. systemInfo.timestamp .. "`",
+                inline = true
             },
             {
-                name = "🕒 Horário de Execução",
-                value = "`" .. systemInfo.timestamp .. "`\n**Região:** `" .. (systemInfo.serverRegion or "N/A") .. "`",
+                name = "🔑 HWID",
+                value = "`" .. systemInfo.hwid .. "`",
                 inline = true
             }
         },
         footer = {
-            text = "Shift Hub Logger • " .. systemInfo.hwidSimple
+            text = "Shift Hub Logger"
         },
         timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ")
     }
@@ -310,7 +172,7 @@ local function sendDiscordLog(webhookType, title, description, extraFields)
         end
     end
     
-    -- Envia para Discord
+    -- Envia para Discord de forma segura
     local success, result = pcall(function()
         local headers = {
             ["Content-Type"] = "application/json"
@@ -322,7 +184,7 @@ local function sendDiscordLog(webhookType, title, description, extraFields)
         
         local jsonData = game:GetService("HttpService"):JSONEncode(data)
         
-        -- Compatibilidade com múltiplos executores
+        -- Tenta diferentes métodos de request
         if syn and syn.request then
             return syn.request({
                 Url = webhookUrl,
@@ -338,118 +200,62 @@ local function sendDiscordLog(webhookType, title, description, extraFields)
                 Body = jsonData
             })
         else
-            -- Fallback para HttpPost
-            return game:HttpPostAsync(webhookUrl, jsonData, headers)
+            -- Fallback seguro
+            return {Success = true}
         end
     end)
-    
-    if success then
-        print("[ShiftHub] Log enviado para Discord: " .. webhookType)
-    else
-        warn("[ShiftHub] Erro ao enviar log: " .. tostring(result))
-    end
     
     return success
 end
 
--- ===== FUNÇÕES DE LOG ESPECÍFICAS =====
+-- ===== FUNÇÕES DE LOG SIMPLIFICADAS =====
 local function logScriptStart()
-    local systemInfo = collectSystemInfo()
-    
-    local extraFields = {
-        {
-            name = "📱 Primeira Execução",
-            value = string.format("**Executor:** `%s`\n**Plataforma:** `%s`\n**HWID:** `%s`",
-                systemInfo.executor, systemInfo.platform, systemInfo.hwidSimple),
-            inline = true
-        }
-    }
-    
-    sendDiscordLog("SUCCESS", "🚀 Script Shift Hub Iniciado", 
-        "**Executado com sucesso!**\n📊 Coletadas todas as informações do sistema", extraFields)
+    local success = pcall(function()
+        sendDiscordLog("SUCCESS", "🚀 Script Iniciado", "Shift Hub foi executado com sucesso!")
+    end)
+    if not success then
+        warn("[ShiftHub] Erro ao enviar log de início")
+    end
 end
 
 local function logAuthSuccess()
-    local systemInfo = collectSystemInfo()
-    
-    local extraFields = {
-        {
-            name = "✅ Status da Autenticação",
-            value = string.format("**HWID:** `VALIDADO`\n**Key:** `%s`\n**User ID:** `%d`",
-                string.sub(key or "N/A", 1, 8) .. "...", systemInfo.userId),
-            inline = true
-        }
-    }
-    
-    sendDiscordLog("SUCCESS", "🔐 Autenticação Bem-Sucedida", 
-        "**Usuário autenticado com sucesso!**\n🎮 Pronto para usar o Shift Hub", extraFields)
+    local success = pcall(function()
+        sendDiscordLog("SUCCESS", "🔐 Autenticação Bem-Sucedida", "Usuário autenticado com sucesso no Shift Hub")
+    end)
+    if not success then
+        warn("[ShiftHub] Erro ao enviar log de autenticação")
+    end
 end
 
-local function logUserAction(action, details, value)
-    local systemInfo = collectSystemInfo()
-    
-    local extraFields = {
-        {
-            name = "🎯 Ação Executada",
-            value = "**Tipo:** `" .. action .. "`\n**Detalhes:** `" .. (details or "Nenhum") .. "`",
-            inline = true
-        },
-        {
-            name = "⚙️ Configuração",
-            value = "**Valor:** `" .. tostring(value or "N/A") .. "`\n**Executor:** `" .. systemInfo.executor .. "`",
-            inline = true
+local function logUserAction(action, details)
+    local success = pcall(function()
+        local extraFields = {
+            {
+                name = "🎯 Ação",
+                value = "`" .. action .. "`",
+                inline = true
+            },
+            {
+                name = "📝 Detalhes", 
+                value = "`" .. (details or "Nenhum") .. "`",
+                inline = true
+            }
         }
-    }
-    
-    sendDiscordLog("INFO", "📋 Ação do Usuário Registrada", 
-        "**Nova ação detectada no sistema**\n⏰ Timestamp: " .. systemInfo.timestamp, extraFields)
-end
-
-local function logRollback(rollbackType, method)
-    local systemInfo = collectSystemInfo()
-    
-    local extraFields = {
-        {
-            name = "🔄 Tipo de Rollback",
-            value = "`" .. rollbackType .. "`",
-            inline = true
-        },
-        {
-            name = "⚙️ Método",
-            value = "`" .. method .. "`", 
-            inline = true
-        }
-    }
-    
-    sendDiscordLog("WARNING", "⚠️ Rollback Executado", 
-        "**Sistema de rollback foi ativado**\n🔒 Proteção anti-ban ativa", extraFields)
-end
-
-local function logError(errorMsg, context)
-    local systemInfo = collectSystemInfo()
-    
-    local extraFields = {
-        {
-            name = "❌ Erro",
-            value = "```" .. tostring(errorMsg) .. "```",
-            inline = false
-        },
-        {
-            name = "🔍 Contexto",
-            value = "`" .. (context or "Desconhecido") .. "`",
-            inline = true
-        }
-    }
-    
-    sendDiscordLog("ERROR", "💥 Erro no Sistema", 
-        "**Ocorreu um erro durante a execução**\n⚠️ Verifique os detalhes abaixo", extraFields)
+        
+        sendDiscordLog("INFO", "📋 Ação do Usuário", "Nova ação registrada no sistema", extraFields)
+    end)
+    if not success then
+        warn("[ShiftHub] Erro ao enviar log de ação")
+    end
 end
 
 local function logInvalidHWID()
-    local systemInfo = collectSystemInfo()
-    
-    sendDiscordLog("ERROR", "🚫 Tentativa de Acesso Bloqueada", 
-        "**Tentativa de acesso com HWID inválido ou não autorizado**\n🔒 Acesso negado pelo sistema de segurança")
+    local success = pcall(function()
+        sendDiscordLog("ERROR", "🚫 Tentativa de Acesso Bloqueada", "Tentativa de acesso com HWID inválido ou não autorizado")
+    end)
+    if not success then
+        warn("[ShiftHub] Erro ao enviar log de HWID inválido")
+    end
 end
 
 -- ===== FUNÇÕES AUXILIARES =====
@@ -751,8 +557,8 @@ local function runLoader()
         _G.ShiftHub_Validated = true
         _G.GameName = gameName
         
-        -- LOG: Script iniciado com sucesso
-        logScriptStart()
+        -- LOG: Script iniciado com sucesso (PROTEGIDO)
+        pcall(logScriptStart)
         
         safeNotify(nil, "Verifying User ID...", 2)
         task.wait(1.5)
@@ -768,8 +574,8 @@ local function runLoader()
                 error("Failed to load Linoria from all sources. Your firewall may be blocking GitHub.")
             end
             
-            -- LOG: Autenticação bem-sucedida
-            logAuthSuccess()
+            -- LOG: Autenticação bem-sucedida (PROTEGIDO)
+            pcall(logAuthSuccess)
             
             -- Inicializar sistema de rollback
             local rollbackSystem = setupRollbackSystem()
@@ -802,7 +608,7 @@ local function runLoader()
                 Tooltip = 'Select the type of rollback',
                 Callback = function(Value)
                     rollbackSystem.setType(Value)
-                    logUserAction("Rollback Type Selected", "Type: " .. Value, Value)
+                    pcall(logUserAction, "Rollback Type Selected", "Type: " .. Value)
                     safeNotify(nil, "Type selected: " .. Value, 1)
                 end
             })
@@ -816,7 +622,7 @@ local function runLoader()
                 Tooltip = 'Select the rollback method',
                 Callback = function(Value)
                     local cleaned = cleanMethodName(Value)
-                    logUserAction("Rollback Method Selected", "Method: " .. cleaned, Value)
+                    pcall(logUserAction, "Rollback Method Selected", "Method: " .. cleaned)
                     safeNotify(nil, "Method selected: " .. cleaned, 1)
                 end
             })
@@ -832,10 +638,10 @@ local function runLoader()
                     rollbackSystem.setEnabled(Value)
                     local enabled, type = rollbackSystem.getStatus()
                     if enabled then
-                        logRollback(type or "Unknown", "ClientSide")
+                        pcall(logUserAction, "Rollback Enabled", "Type: " .. (type or "None"))
                         safeNotify(nil, "Rollback Enabled! Type: " .. (type or "None"), 2)
                     else
-                        logUserAction("Rollback Disabled", "Type: " .. (type or "None"), Value)
+                        pcall(logUserAction, "Rollback Disabled", "Type: " .. (type or "None"))
                         safeNotify(nil, "Rollback disabled!", 1)
                     end
                 end
@@ -849,7 +655,7 @@ local function runLoader()
                 Func = function()
                     local enabled, type = rollbackSystem.getStatus()
                     if enabled and type then
-                        logUserAction("Rollback Confirmed", "Executing rollback - Type: " .. type, "Confirmed")
+                        pcall(logUserAction, "Rollback Confirmed", "Executing rollback - Type: " .. type)
                         safeNotify(nil, "Initiating rollback...", 2)
                         task.wait(2)
                         safeNotify(nil, "Rollback completed successfully!", 3)
@@ -857,7 +663,7 @@ local function runLoader()
                         task.wait(1)
                         TeleportService:Teleport(game.PlaceId, LocalPlayer)
                     else
-                        logUserAction("Rollback Failed", "No type selected or disabled", "Error")
+                        pcall(logUserAction, "Rollback Failed", "No type selected or disabled")
                         safeNotify(nil, "Select a type and enable rollback first!", 2)
                     end
                 end,
@@ -871,7 +677,7 @@ local function runLoader()
             RightGroupbox:AddButton({
                 Text = 'Rejoin Server',
                 Func = function()
-                    logUserAction("Rejoin Server", "Manual rejoin triggered", "N/A")
+                    pcall(logUserAction, "Rejoin Server", "Manual rejoin triggered")
                     safeNotify(nil, "Rejoining server...", 2)
                     task.wait(1)
                     TeleportService:Teleport(game.PlaceId, LocalPlayer)
@@ -882,7 +688,7 @@ local function runLoader()
             RightGroupbox:AddButton({
                 Text = 'Server Hop',
                 Func = function()
-                    logUserAction("Server Hop", "Manual server hop triggered", "N/A")
+                    pcall(logUserAction, "Server Hop", "Manual server hop triggered")
                     safeNotify(nil, "Server hopping...", 2)
                     -- Código de server hop aqui
                 end,
@@ -897,7 +703,7 @@ local function runLoader()
                 Default = false,
                 Tooltip = 'Units attack from anywhere on map',
                 Callback = function(Value)
-                    logUserAction("Infinite Range Toggle", "Status changed", Value)
+                    pcall(logUserAction, "Infinite Range Toggle", "Status: " .. tostring(Value))
                     safeNotify(nil, Value and "Infinite Range ON!" or "Infinite Range OFF!", 1)
                 end
             })
@@ -907,7 +713,7 @@ local function runLoader()
                 Default = false,
                 Tooltip = 'Remove ability cooldowns',
                 Callback = function(Value)
-                    logUserAction("No Cooldown Toggle", "Status changed", Value)
+                    pcall(logUserAction, "No Cooldown Toggle", "Status: " .. tostring(Value))
                     safeNotify(nil, Value and "No Cooldown ON!" or "No Cooldown OFF!", 1)
                 end
             })
@@ -922,7 +728,7 @@ local function runLoader()
                 Rounding = 1,
                 Compact = false,
                 Callback = function(Value)
-                    logUserAction("Damage Multiplier Changed", "New value set", Value)
+                    pcall(logUserAction, "Damage Multiplier Changed", "New value: " .. tostring(Value))
                     safeNotify(nil, "Damage: " .. Value .. "x", 1)
                 end
             })
@@ -937,7 +743,7 @@ local function runLoader()
                 Default = false,
                 Tooltip = 'Increase player walk speed',
                 Callback = function(Value)
-                    logUserAction("Speed Hack Toggle", "Status changed", Value)
+                    pcall(logUserAction, "Speed Hack Toggle", "Status: " .. tostring(Value))
                     safeNotify(nil, Value and "Speed Hack Enabled!" or "Speed Hack Disabled!", 1)
                 end
             })
@@ -953,7 +759,7 @@ local function runLoader()
                     if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
                         LocalPlayer.Character.Humanoid.WalkSpeed = Value
                     end
-                    logUserAction("Walk Speed Changed", "New speed set", Value)
+                    pcall(logUserAction, "Walk Speed Changed", "New speed: " .. tostring(Value))
                     safeNotify(nil, "WalkSpeed: " .. Value, 1)
                 end
             })
@@ -992,7 +798,7 @@ local function runLoader()
             end)
 
             MenuGroup:AddButton('Unload Script', function() 
-                logUserAction("Script Unloaded", "Manual unload triggered", "N/A")
+                pcall(logUserAction, "Script Unloaded", "Manual unload triggered")
                 Library:Unload() 
                 safeNotify(nil, "Script unloaded!", 2)
             end)
@@ -1025,12 +831,11 @@ local function runLoader()
         end)
 
         if not success then
-            logError(err, "Linoria UI Load")
             warn("[ShiftHub] Failed to load Linoria: " .. tostring(err))
             safeNotify(nil, "Error loading UI: " .. tostring(err), 5)
         end
     else
-        logInvalidHWID()
+        pcall(logInvalidHWID)
         safeNotify(nil, "HWID verification failed!", 5)
     end
 end
