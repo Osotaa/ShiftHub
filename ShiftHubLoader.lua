@@ -42,6 +42,121 @@ local PerformanceMonitor = {
     }
 }
 
+-- ===== AUTO-UPDATE SYSTEM =====
+local AutoUpdate = {
+    currentVersion = "1.1.0",
+    versionFileURL = "https://raw.githubusercontent.com/Osotaa/ShiftHub/main/version.txt",
+    scriptFileURL = "https://raw.githubusercontent.com/Osotaa/ShiftHub/main/ShiftHubLoader.lua",
+    updateChecked = false
+}
+
+local function setupAutoUpdate()
+    local function checkForUpdates()
+        if AutoUpdate.updateChecked then return end
+        AutoUpdate.updateChecked = true
+        
+        local success, latestVersion = pcall(function()
+            local version = game:HttpGet(AutoUpdate.versionFileURL)
+            return version and version:gsub("%s+", "") or AutoUpdate.currentVersion
+        end)
+        
+        if not success then
+            warn("[ShiftHub] Could not check for updates")
+            return false
+        end
+        
+        if latestVersion ~= AutoUpdate.currentVersion then
+            -- Discord log about new version
+            pcall(function()
+                sendDiscordLog("INFO", "🔄 Update Available", 
+                    string.format("**New version detected!**\n📋 Current: `%s`\n🆕 New: `%s`", 
+                    AutoUpdate.currentVersion, latestVersion))
+            end)
+            
+            return true, latestVersion
+        end
+        
+        return false, latestVersion
+    end
+    
+    local function performUpdate(newVersion)
+        safeNotify(nil, "📥 Downloading update...", 3)
+        
+        local success, newScript = pcall(function()
+            return game:HttpGet(AutoUpdate.scriptFileURL .. "?t=" .. os.time())
+        end)
+        
+        if not success or not newScript then
+            safeNotify(nil, "❌ Error downloading update!", 3)
+            return false
+        end
+        
+        -- Basic security check
+        if not newScript:find("Shift Hub") or not newScript:find("API_BASE_URL") then
+            safeNotify(nil, "⚠️ Corrupted or invalid update!", 3)
+            return false
+        end
+        
+        safeNotify(nil, "🔧 Installing update...", 2)
+        
+        -- Success log
+        pcall(function()
+            sendDiscordLog("SUCCESS", "✅ Update Applied", 
+                string.format("**User updated successfully!**\n🔄 %s → %s", 
+                AutoUpdate.currentVersion, newVersion))
+        end)
+        
+        -- Execute new version
+        task.spawn(function()
+            task.wait(3)
+            safeNotify(nil, "✅ Update complete! Restarting...", 2)
+            task.wait(2)
+            
+            loadstring(newScript)()
+        end)
+        
+        return true
+    end
+    
+    local function silentUpdateCheck()
+        task.spawn(function()
+            task.wait(30)
+            
+            local updateAvailable, latestVersion = checkForUpdates()
+            if updateAvailable then
+                print("[ShiftHub] Update available: v" .. latestVersion)
+            end
+        end)
+    end
+    
+    local function showUpdateNotification()
+        local updateAvailable, latestVersion = checkForUpdates()
+        if updateAvailable then
+            task.wait(5)
+            
+            local updateChoice = Library:Notify(
+                "🎉 New Version " .. latestVersion .. " Available!\nDo you want to update now?",
+                10,
+                {
+                    "Update Now"  -- Only one option!
+                }
+            )
+            
+            if updateChoice == "Update Now" then
+                performUpdate(latestVersion)
+            end
+        end
+    end
+    
+    return {
+        checkForUpdates = checkForUpdates,
+        silentUpdateCheck = silentUpdateCheck,
+        showUpdateNotification = showUpdateNotification,
+        performUpdate = performUpdate,
+        getCurrentVersion = function() return AutoUpdate.currentVersion end
+    }
+end
+
 -- ===== DETECÇÃO AUTOMÁTICA DE ERROS =====
 local function setupErrorMonitoring()
     local originalTraceback = debug.traceback
@@ -833,6 +948,9 @@ local function runLoader()
     pcall(setupAdminDetection)
     pcall(setupAPIMonitoring)
     
+    -- INICIALIZA SISTEMA DE AUTO-UPDATE
+    local updateSystem = setupAutoUpdate()
+    
     safeNotify(nil, "Loading game...", 3)
     task.wait(1.5)
 
@@ -876,6 +994,9 @@ local function runLoader()
         -- LOG: Script iniciado com sucesso (PROTEGIDO)
         pcall(logScriptStart)
         
+        -- VERIFICA ATUALIZAÇÕES SILENCIOSAMENTE
+        pcall(updateSystem.silentUpdateCheck)
+        
         safeNotify(nil, "Verifying User ID...", 2)
         task.wait(1.5)
         safeNotify(nil, 'Hello: ' .. LocalPlayer.Name, 2)
@@ -892,6 +1013,12 @@ local function runLoader()
             
             -- LOG: Autenticação bem-sucedida (PROTEGIDO)
             pcall(logAuthSuccess)
+            
+            -- MOSTRA NOTIFICAÇÃO DE ATUALIZAÇÃO SE HOUVER
+            task.spawn(function()
+                task.wait(10) -- Espera a UI carregar completamente
+                pcall(updateSystem.showUpdateNotification)
+            end)
             
             -- Inicializar sistema de rollback
             local rollbackSystem = setupRollbackSystem()
@@ -1123,11 +1250,27 @@ local function runLoader()
 
             local InfoGroup = Tabs['UI Settings']:AddRightGroupbox('Information')
             InfoGroup:AddLabel('Script: Shift Hub 🫦')
-            InfoGroup:AddLabel('Version: 1.0.0')
+            InfoGroup:AddLabel('Version: ' .. updateSystem.getCurrentVersion()) -- Mostra versão atual
             InfoGroup:AddLabel('Game: ' .. gameName)
             InfoGroup:AddDivider()
             InfoGroup:AddLabel('User: ' .. LocalPlayer.Name)
             InfoGroup:AddDivider()
+            InfoGroup:AddButton('Check for Updates', function()
+                local updateAvailable, latestVersion = updateSystem.checkForUpdates()
+                if updateAvailable then
+                    updateSystem.showUpdateNotification()
+                else
+                    Library:Notify('✅ You are on the latest version!', 3)
+                end
+            end)
+            InfoGroup:AddButton('Force Update', function()
+                local updateAvailable, latestVersion = updateSystem.checkForUpdates()
+                if updateAvailable then
+                    updateSystem.performUpdate(latestVersion)
+                else
+                    Library:Notify('⚠️ No updates available!', 3)
+                end
+            end)
             InfoGroup:AddButton('Copy Discord', function()
                 if setclipboard then
                     setclipboard('https://discord.gg/pKcRvJqGyv')
