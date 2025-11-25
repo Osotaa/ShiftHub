@@ -249,6 +249,37 @@ local function logUserAction(action, details)
     end
 end
 
+-- FUNÇÃO NOVA PARA KEY NÃO VINCULADA
+local function logNoKeyLinked()
+    local success = pcall(function()
+        local systemInfo = collectSystemInfo()
+        
+        local extraFields = {
+            {
+                name = "🚫 Status da Key",
+                value = "`NÃO VINCULADA`",
+                inline = true
+            },
+            {
+                name = "🔍 Roblox ID",
+                value = "`" .. tostring(robloxId) .. "`",
+                inline = true
+            },
+            {
+                name = "⚠️ Ação Necessária",
+                value = "`Vincular key no site`",
+                inline = true
+            }
+        }
+        
+        sendDiscordLog("ERROR", "🔑 Key Não Vinculada", 
+            "**Usuário tentou executar sem key vinculada!**\n❌ Acesso negado pelo sistema", extraFields)
+    end)
+    if not success then
+        warn("[ShiftHub] Erro ao enviar log de key não vinculada")
+    end
+end
+
 local function logInvalidHWID()
     local success = pcall(function()
         sendDiscordLog("ERROR", "🚫 Tentativa de Acesso Bloqueada", "Tentativa de acesso com HWID inválido ou não autorizado")
@@ -546,6 +577,8 @@ local function runLoader()
     local automaticKey = getAutomaticKey()
     if not automaticKey then
         warn("[ShiftHub] Link your Roblox ID to your key!")
+        -- LOG: Key não vinculada
+        pcall(logNoKeyLinked)
         safeNotify(nil, "Authentication failed!", 5)
         return
     end
