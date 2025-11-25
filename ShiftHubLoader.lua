@@ -44,28 +44,58 @@ local PerformanceMonitor = {
 
 -- ===== AUTO-UPDATE SYSTEM =====
 local AutoUpdate = {
-    currentVersion = "1.1.0",
     versionFileURL = "https://raw.githubusercontent.com/Osotaa/ShiftHub/main/version.txt",
     scriptFileURL = "https://raw.githubusercontent.com/Osotaa/ShiftHub/main/ShiftHubLoader.lua",
     updateChecked = false
 }
+
+-- Função para detectar a versão atual automaticamente
+local function getCurrentVersion()
+    -- Tenta detectar a versão atual de várias formas
+    local versionPatterns = {
+        "currentVersion = \"([0-9.]+)\"",
+        "Version: ([0-9.]+)",
+        "v([0-9.]+)"
+    }
+    
+    local scriptContent = readfile and readfile("ShiftHubLoader.lua") or ""
+    
+    for _, pattern in ipairs(versionPatterns) do
+        local version = scriptContent:match(pattern)
+        if version then
+            return version
+        end
+    end
+    
+    -- Fallback: versão padrão
+    return "1.1.0"
+end
+
+AutoUpdate.currentVersion = getCurrentVersion()
 
 local function setupAutoUpdate()
     local function checkForUpdates()
         if AutoUpdate.updateChecked then return end
         AutoUpdate.updateChecked = true
         
+        print("[ShiftHub] Checking updates... Current: " .. AutoUpdate.currentVersion)
+        
         local success, latestVersion = pcall(function()
             local version = game:HttpGet(AutoUpdate.versionFileURL)
-            return version and version:gsub("%s+", "") or AutoUpdate.currentVersion
+            version = version and version:gsub("%s+", "") or AutoUpdate.currentVersion
+            print("[ShiftHub] GitHub version: " .. version)
+            return version
         end)
         
         if not success then
-            warn("[ShiftHub] Could not check for updates")
+            warn("[ShiftHub] Could not check for updates: " .. tostring(latestVersion))
             return false
         end
         
+        print("[ShiftHub] Comparing: " .. AutoUpdate.currentVersion .. " vs " .. latestVersion)
+        
         if latestVersion ~= AutoUpdate.currentVersion then
+            print("[ShiftHub] UPDATE AVAILABLE!")
             -- Discord log about new version
             pcall(function()
                 sendDiscordLog("INFO", "🔄 Update Available", 
@@ -74,88 +104,12 @@ local function setupAutoUpdate()
             end)
             
             return true, latestVersion
+        else
+            print("[ShiftHub] Already on latest version")
         end
         
         return false, latestVersion
     end
-    
-    local function performUpdate(newVersion)
-        safeNotify(nil, "📥 Downloading update...", 3)
-        
-        local success, newScript = pcall(function()
-            return game:HttpGet(AutoUpdate.scriptFileURL .. "?t=" .. os.time())
-        end)
-        
-        if not success or not newScript then
-            safeNotify(nil, "❌ Error downloading update!", 3)
-            return false
-        end
-        
-        -- Basic security check
-        if not newScript:find("Shift Hub") or not newScript:find("API_BASE_URL") then
-            safeNotify(nil, "⚠️ Corrupted or invalid update!", 3)
-            return false
-        end
-        
-        safeNotify(nil, "🔧 Installing update...", 2)
-        
-        -- Success log
-        pcall(function()
-            sendDiscordLog("SUCCESS", "✅ Update Applied", 
-                string.format("**User updated successfully!**\n🔄 %s → %s", 
-                AutoUpdate.currentVersion, newVersion))
-        end)
-        
-        -- Execute new version
-        task.spawn(function()
-            task.wait(3)
-            safeNotify(nil, "✅ Update complete! Restarting...", 2)
-            task.wait(2)
-            
-            loadstring(newScript)()
-        end)
-        
-        return true
-    end
-    
-    local function silentUpdateCheck()
-        task.spawn(function()
-            task.wait(30)
-            
-            local updateAvailable, latestVersion = checkForUpdates()
-            if updateAvailable then
-                print("[ShiftHub] Update available: v" .. latestVersion)
-            end
-        end)
-    end
-    
-    local function showUpdateNotification()
-        local updateAvailable, latestVersion = checkForUpdates()
-        if updateAvailable then
-            task.wait(5)
-            
-            local updateChoice = Library:Notify(
-                "🎉 New Version " .. latestVersion .. " Available!\nDo you want to update now?",
-                10,
-                {
-                    "Update Now"  -- Only one option!
-                }
-            )
-            
-            if updateChoice == "Update Now" then
-                performUpdate(latestVersion)
-            end
-        end
-    end
-    
-    return {
-        checkForUpdates = checkForUpdates,
-        silentUpdateCheck = silentUpdateCheck,
-        showUpdateNotification = showUpdateNotification,
-        performUpdate = performUpdate,
-        getCurrentVersion = function() return AutoUpdate.currentVersion end
-    }
-end
 
 -- ===== DETECÇÃO AUTOMÁTICA DE ERROS =====
 local function setupErrorMonitoring()
