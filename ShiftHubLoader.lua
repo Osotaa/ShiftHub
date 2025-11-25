@@ -266,7 +266,7 @@ local function logNoKeyLinked()
                 inline = true
             },
             {
-                name = "⚠️ Ação Necessária",
+                name = "⚠️ Make this",
                 value = "`Vincular key no site`",
                 inline = true
             }
