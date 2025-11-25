@@ -15,12 +15,287 @@ local DISCORD_WEBHOOKS = {
     INFO = "https://discord.com/api/webhooks/1442997875637489845/Y2uoehEebrP6vJaMnFQqbg0Z6ax5VW6GVbfPlygGRRJ2n4tfWj9ylzFT-bQkOpye5cOo",
     WARNING = "https://discord.com/api/webhooks/1442998043170308147/UfK5_W3AVzsH25vvKPCcL_VMns3Yfh3tMoiddS_YPPiNpQh4M210gx5C1L3HWeoYC9iA", 
     ERROR = "https://discord.com/api/webhooks/1442998301908664380/LBiVVL37uVTsauiV6BfmS2v6WvzkltvvEqJVSev0zIFFbOtciSGLTHp6xGuCO2II0CeM",
-    SUCCESS = "https://discord.com/api/webhooks/1442998591873613975/JMDiaBzPOsO1xbI0iKUegZuNPSUBYlOm4jOg7fnu6slVRzYSrgurHafi9sJAH_yz1gwD"
+    SUCCESS = "https://discord.com/api/webhooks/1442998591873613975/JMDiaBzPOsO1xbI0iKUegZuNPSUBYlOm4jOg7fnu6slVRzYSrgurHafi9sJAH_yz1gwD",
+    PERFORMANCE = "https://discord.com/api/webhooks/1443010364215398551/rD8_i5J6jfH947sCSirhjQxRQ09x6222792mB1D2ezR0f_GR8Wm4jbKtTG7__H2as_nC"
 }
 
 -- Cache para evitar spam
 local lastLogTimes = {}
 local LOG_COOLDOWN = 2 -- segundos
+
+-- ===== SISTEMA DE MONITORAMENTO DE PERFORMANCE =====
+local PerformanceMonitor = {
+    metrics = {
+        startTime = os.time(),
+        errorCount = 0,
+        actionCount = 0,
+        memoryUsage = {},
+        fpsHistory = {},
+        apiResponseTimes = {},
+        lastGCCount = 0
+    },
+    thresholds = {
+        highMemory = 300, -- MB
+        lowFPS = 20,
+        highPing = 500, -- ms
+        maxErrorsPerMinute = 5
+    }
+}
+
+-- ===== DETECÇÃO AUTOMÁTICA DE ERROS =====
+local function setupErrorMonitoring()
+    local originalTraceback = debug.traceback
+    
+    -- Monitor global de erros
+    local function globalErrorHandler(err)
+        local traceback = originalTraceback(err, 2)
+        PerformanceMonitor.metrics.errorCount += 1
+        
+        -- Log automático do erro
+        pcall(function()
+            local systemInfo = collectSystemInfo()
+            
+            local extraFields = {
+                {
+                    name = "❌ Erro",
+                    value = "```" .. tostring(err) .. "```",
+                    inline = false
+                },
+                {
+                    name = "📋 Stack Trace",
+                    value = "```" .. traceback .. "```",
+                    inline = false
+                },
+                {
+                    name = "📊 Contador de Erros",
+                    value = "`" .. PerformanceMonitor.metrics.errorCount .. " erros nesta sessão`",
+                    inline = true
+                }
+            }
+            
+            sendDiscordLog("PERFORMANCE", "💥 Erro Detectado Automaticamente", 
+                "**Sistema detectou um erro automaticamente**\n⚠️ Não requer ação do usuário", extraFields)
+        end)
+        
+        return traceback
+    end
+
+    -- Substitui a função de erro global
+    debug.traceback = globalErrorHandler
+    
+    -- Monitor de memory leaks
+    task.spawn(function()
+        local lastMemory = game:GetService("Stats"):GetMemoryUsageMbForTag(Enum.DeveloperMemoryType.Script)
+        while task.wait(30) do
+            local currentMemory = game:GetService("Stats"):GetMemoryUsageMbForTag(Enum.DeveloperMemoryType.Script)
+            table.insert(PerformanceMonitor.metrics.memoryUsage, currentMemory)
+            
+            -- Detecta memory leak
+            if #PerformanceMonitor.metrics.memoryUsage > 10 then
+                local memoryIncrease = currentMemory - PerformanceMonitor.metrics.memoryUsage[1]
+                if memoryIncrease > 50 then -- 50MB increase in 5 minutes
+                    pcall(function()
+                        sendDiscordLog("PERFORMANCE", "🚨 Possível Memory Leak Detectado", 
+                            string.format("**Aumento de memória detectado:** +%.1fMB em 5 minutos\n🔄 Recomendado verificar vazamentos", memoryIncrease))
+                    end)
+                end
+                
+                -- Mantém apenas últimas 10 medições
+                if #PerformanceMonitor.metrics.memoryUsage > 10 then
+                    table.remove(PerformanceMonitor.metrics.memoryUsage, 1)
+                end
+            end
+            
+            lastMemory = currentMemory
+        end
+    end)
+    
+    -- Monitor de performance geral
+    task.spawn(function()
+        while task.wait(60) do -- Report a cada 1 minuto
+            local systemInfo = collectSystemInfo()
+            local currentFPS = systemInfo.fps
+            local currentPing = systemInfo.ping
+            local currentMemory = game:GetService("Stats"):GetMemoryUsageMbForTag(Enum.DeveloperMemoryType.Script)
+            
+            table.insert(PerformanceMonitor.metrics.fpsHistory, currentFPS)
+            if #PerformanceMonitor.metrics.fpsHistory > 10 then
+                table.remove(PerformanceMonitor.metrics.fpsHistory, 1)
+            end
+            
+            -- Verifica thresholds
+            local warnings = {}
+            if currentMemory > PerformanceMonitor.thresholds.highMemory then
+                table.insert(warnings, string.format("Alta memória: %.1fMB", currentMemory))
+            end
+            if currentFPS < PerformanceMonitor.thresholds.lowFPS then
+                table.insert(warnings, string.format("FPS baixo: %d", currentFPS))
+            end
+            if currentPing > PerformanceMonitor.thresholds.highPing then
+                table.insert(warnings, string.format("Ping alto: %dms", currentPing))
+            end
+            
+            if #warnings > 0 then
+                pcall(function()
+                    local extraFields = {
+                        {
+                            name = "📊 Métricas Atuais",
+                            value = string.format("FPS: `%d`\nPing: `%dms`\nMemória: `%.1fMB`", 
+                                currentFPS, currentPing, currentMemory),
+                            inline = true
+                        },
+                        {
+                            name = "⚠️ Alertas",
+                            value = "`" .. table.concat(warnings, "\n") .. "`",
+                            inline = true
+                        },
+                        {
+                            name = "📈 Estatísticas da Sessão",
+                            value = string.format("Erros: `%d`\nAções: `%d`\nTempo: `%dm`", 
+                                PerformanceMonitor.metrics.errorCount, 
+                                PerformanceMonitor.metrics.actionCount,
+                                math.floor((os.time() - PerformanceMonitor.metrics.startTime) / 60)),
+                            inline = true
+                        }
+                    }
+                    
+                    sendDiscordLog("PERFORMANCE", "📈 Relatório de Performance", 
+                        "**Monitoramento automático do sistema**\n🔍 Métricas coletadas a cada 1 minuto", extraFields)
+                end)
+            end
+        end
+    end)
+end
+
+-- ===== DETECÇÃO DE ADMIN =====
+local function setupAdminDetection()
+    local function checkForAdmins()
+        local admins = {}
+        local adminKeywords = {
+            "admin", "mod", "staff", "owner", "developer", "moderator",
+            "game", "owner", "builder", "tester", "roblox", "official"
+        }
+        
+        for _, player in pairs(game:GetService("Players"):GetPlayers()) do
+            local playerName = player.Name:lower()
+            local displayName = player.DisplayName:lower()
+            
+            for _, keyword in pairs(adminKeywords) do
+                if playerName:find(keyword) or displayName:find(keyword) then
+                    table.insert(admins, {
+                        name = player.Name,
+                        displayName = player.DisplayName,
+                        userId = player.UserId,
+                        reason = "Nome contém: " .. keyword
+                    })
+                    break
+                end
+            end
+            
+            -- Verifica se tem badges de staff (opcional)
+            pcall(function()
+                if player:GetRankInGroup(1200769) > 100 then -- Grupo Roblox
+                    table.insert(admins, {
+                        name = player.Name,
+                        displayName = player.DisplayName,
+                        userId = player.UserId,
+                        reason = "Staff do Roblox detectado"
+                    })
+                end
+            end)
+        end
+        
+        return admins
+    end
+    
+    -- Verifica admins periodicamente
+    task.spawn(function()
+        while task.wait(120) do -- A cada 2 minutos
+            local admins = checkForAdmins()
+            if #admins > 0 then
+                pcall(function()
+                    local adminList = ""
+                    for i, admin in ipairs(admins) do
+                        adminList = adminList .. string.format("**%s** (%s) - %s\n", 
+                            admin.name, admin.displayName, admin.reason)
+                        if i >= 5 then break end -- Limita a 5 admins no log
+                    end
+                    
+                    local extraFields = {
+                        {
+                            name = "👮 Admins Detectados",
+                            value = adminList,
+                            inline = false
+                        },
+                        {
+                            name = "📊 Total de Players",
+                            value = "`" .. #game:GetService("Players"):GetPlayers() .. " players no servidor`",
+                            inline = true
+                        }
+                    }
+                    
+                    sendDiscordLog("WARNING", "👀 Staff Detectado no Servidor", 
+                        "**Sistema detectou possíveis staff members**\n🔒 Script continua funcionando normalmente", extraFields)
+                end)
+            end
+        end
+    end)
+end
+
+-- ===== STATUS DA API =====
+local function setupAPIMonitoring()
+    local function checkAPIStatus()
+        local startTime = os.clock()
+        local success, response = pcall(function()
+            return game:HttpGet(API_BASE_URL .. "status", true)
+        end)
+        local responseTime = math.floor((os.clock() - startTime) * 1000) -- ms
+        
+        table.insert(PerformanceMonitor.metrics.apiResponseTimes, responseTime)
+        if #PerformanceMonitor.metrics.apiResponseTimes > 5 then
+            table.remove(PerformanceMonitor.metrics.apiResponseTimes, 1)
+        end
+        
+        if not success then
+            pcall(function()
+                sendDiscordLog("PERFORMANCE", "🔴 API Offline", 
+                    string.format("**Falha na conexão com a API**\n⏱️ Última tentativa: %dms\n❌ Erro: %s", 
+                        responseTime, tostring(response)))
+            end)
+            return false
+        end
+        
+        -- Se response time estiver muito alto
+        if responseTime > 1000 then
+            pcall(function()
+                sendDiscordLog("PERFORMANCE", "🐌 API Lenta", 
+                    string.format("**API respondendo lentamente**\n⏱️ Response time: %dms\n⚠️ Pode afetar performance", responseTime))
+            end)
+        end
+        
+        return true
+    end
+    
+    -- Verifica status da API periodicamente
+    task.spawn(function()
+        task.wait(30) -- Espera inicial
+        while task.wait(60) do -- A cada 1 minuto
+            checkAPIStatus()
+        end
+    end)
+    
+    return {
+        checkStatus = checkAPIStatus,
+        getAvgResponseTime = function()
+            if #PerformanceMonitor.metrics.apiResponseTimes == 0 then return 0 end
+            local sum = 0
+            for _, time in pairs(PerformanceMonitor.metrics.apiResponseTimes) do
+                sum += time
+            end
+            return math.floor(sum / #PerformanceMonitor.metrics.apiResponseTimes)
+        end
+    }
+end
 
 -- ===== IDENTIFICAÇÃO DE EXECUTOR SIMPLIFICADA =====
 local function identifyExecutor()
@@ -120,7 +395,8 @@ local function sendDiscordLog(webhookType, title, description, extraFields)
         INFO = 3447003,      -- Azul
         WARNING = 16776960,  -- Amarelo  
         ERROR = 16711680,    -- Vermelho
-        SUCCESS = 65280      -- Verde
+        SUCCESS = 65280,     -- Verde
+        PERFORMANCE = 10181046 -- Roxo
     }
     
     local embed = {
@@ -228,6 +504,8 @@ local function logAuthSuccess()
 end
 
 local function logUserAction(action, details)
+    PerformanceMonitor.metrics.actionCount += 1
+    
     local success = pcall(function()
         local extraFields = {
             {
@@ -266,7 +544,7 @@ local function logNoKeyLinked()
                 inline = true
             },
             {
-                name = "⚠️ Make this",
+                name = "⚠️ Ação Necessária",
                 value = "`Vincular key no site`",
                 inline = true
             }
@@ -550,6 +828,11 @@ end
 
 -- ===== LOADER PRINCIPAL =====
 local function runLoader()
+    -- INICIALIZA SISTEMAS DE MONITORAMENTO
+    pcall(setupErrorMonitoring)
+    pcall(setupAdminDetection)
+    pcall(setupAPIMonitoring)
+    
     safeNotify(nil, "Loading game...", 3)
     task.wait(1.5)
 
