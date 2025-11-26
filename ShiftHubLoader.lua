@@ -44,7 +44,7 @@ local PerformanceMonitor = {
 }
 
 -- ===== VERSÃO FIXA (ALTERE MANUALMENTE) =====
-local CURRENT_VERSION = "1.2.4" -- ALTERE ESTE NÚMERO PARA ATUALIZAR A VERSÃO
+local CURRENT_VERSION = "1.1.0" -- ALTERE ESTE NÚMERO PARA ATUALIZAR A VERSÃO
 
 -- ===== AUTO-UPDATE SYSTEM DESATIVADO =====
 local AutoUpdate = {
