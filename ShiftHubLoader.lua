@@ -50,79 +50,41 @@ local AutoUpdate = {
     updateChecked = false
 }
 
--- Sistema inteligente de detecção de versão
-local function detectCurrentVersion()
-    -- Método 1: Tenta encontrar a versão no próprio código fonte
-    local scriptSource = ""
-    if readfile then
-        local success, content = pcall(function()
-            return readfile("ShiftHubLoader.lua")
-        end)
-        if success then
-            scriptSource = content
-        end
-    end
-    
-    -- Padrões para encontrar a versão no código
-    local versionPatterns = {
-        'AutoUpdate%.currentVersion = "([0-9%.]+)"',
-        'currentVersion = "([0-9%.]+)"',
-        'Version%s-=%s-"([0-9%.]+)"',
-        'v?(%d+%.%d+%.%d+)'
-    }
-    
-    for i, pattern in ipairs(versionPatterns) do
-        local version = scriptSource:match(pattern)
-        if version then
-            return version
-        end
-    end
-    
-    -- Fallback
-    return "1.2.0"
-end
-
--- Define a versão atual
-AutoUpdate.currentVersion = detectCurrentVersion()
-
 local function setupAutoUpdate()
     local function checkForUpdates()
         if AutoUpdate.updateChecked then return end
         AutoUpdate.updateChecked = true
         
+        -- FORÇA a busca da versão mais recente (sem cache)
         local success, latestVersion = pcall(function()
-            local version = game:HttpGet(AutoUpdate.versionFileURL)
-            return version and version:gsub("%s+", "") or AutoUpdate.currentVersion
+            -- Adiciona timestamp para evitar cache
+            local url = AutoUpdate.versionFileURL .. "?t=" .. os.time()
+            local version = game:HttpGet(url)
+            return version and version:gsub("%s+", "") or "unknown"
         end)
         
         if not success then
-            return false
+            return false, "unknown"
         end
         
-        -- Converte versões para números para comparação precisa
-        local function parseVersion(ver)
-            local major, minor, patch = ver:match("(%d+)%.(%d+)%.(%d+)")
-            if major then
-                return tonumber(major), tonumber(minor), tonumber(patch)
-            end
-            return 0, 0, 0
-        end
+        -- Busca a versão atual do usuário (também sem cache)
+        local success2, currentVersion = pcall(function()
+            local url = AutoUpdate.versionFileURL .. "?current=" .. os.time()
+            local version = game:HttpGet(url)
+            return version and version:gsub("%s+", "") or "unknown"
+        end)
         
-        local localMajor, localMinor, localPatch = parseVersion(AutoUpdate.currentVersion)
-        local gitMajor, gitMinor, gitPatch = parseVersion(latestVersion)
+        -- Se não conseguiu pegar a versão atual, assume que precisa atualizar
+        local needsUpdate = not success2 or (latestVersion ~= currentVersion)
         
-        local isUpdateAvailable = (gitMajor > localMajor) or 
-                                 (gitMajor == localMajor and gitMinor > localMinor) or
-                                 (gitMajor == localMajor and gitMinor == localMinor and gitPatch > localPatch)
-        
-        if isUpdateAvailable then
+        if needsUpdate then
             -- Log de nova versão disponível
             pcall(function()
                 local systemInfo = collectSystemInfo()
                 local extraFields = {
                     {
                         name = "🔄 Update Info",
-                        value = string.format("Current: `%s` → New: `%s`", AutoUpdate.currentVersion, latestVersion),
+                        value = string.format("GitHub: `%s`", latestVersion),
                         inline = true
                     },
                     {
@@ -131,19 +93,14 @@ local function setupAutoUpdate()
                         inline = true
                     },
                     {
-                        name = "🎮 Game",
+                        name = "🎮 Game", 
                         value = string.format("`%s`", systemInfo.gameName),
-                        inline = true
-                    },
-                    {
-                        name = "🔧 Executor", 
-                        value = string.format("`%s`", systemInfo.executor),
                         inline = true
                     }
                 }
                 
-                sendDiscordLog("UPDATE", "📦 New Version Available", 
-                    "**Update detected for user!**\n⬇️ Can update to newest version", extraFields)
+                sendDiscordLog("UPDATE", "📦 Update Check", 
+                    "**User needs update!**\n⬇️ Can update to newest version", extraFields)
             end)
             
             return true, latestVersion
@@ -160,18 +117,13 @@ local function setupAutoUpdate()
             local systemInfo = collectSystemInfo()
             local extraFields = {
                 {
-                    name = "🔄 Update Started",
-                    value = string.format("`%s` → `%s`", AutoUpdate.currentVersion, newVersion),
+                    name = "🔄 Update Started", 
+                    value = string.format("To: `%s`", newVersion),
                     inline = true
                 },
                 {
                     name = "👤 User",
                     value = string.format("`%s`", systemInfo.username),
-                    inline = true
-                },
-                {
-                    name = "🔧 Executor",
-                    value = string.format("`%s`", systemInfo.executor),
                     inline = true
                 }
             }
@@ -185,26 +137,7 @@ local function setupAutoUpdate()
         end)
         
         if not success or not newScript then
-            safeNotify(nil, "❌ r downloading update!", 3)
-            
-            -- Log de  na atualização
-            pcall(function()
-                sendDiscordLog("UPDATE", "❌ Update Failed", 
-                    string.format("**Failed to download update!**\n❌ r: `%s`", tostring(newScript)))
-            end)
-            
-            return false
-        end
-        
-        -- Verificação de segurança
-        if not newScript:find("Shift Hub") or not newScript:find("API_BASE_URL") then
-            safeNotify(nil, "⚠️ Corrupted or invalid update!", 3)
-            
-            pcall(function()
-                sendDiscordLog("UPDATE", "⚠️ Corrupted Update", 
-                    "**Downloaded update appears corrupted!**\n🚫 Security check failed")
-            end)
-            
+            safeNotify(nil, "❌ Error downloading update!", 3)
             return false
         end
         
@@ -216,22 +149,12 @@ local function setupAutoUpdate()
             local extraFields = {
                 {
                     name = "✅ Update Successful",
-                    value = string.format("`%s` → `%s`", AutoUpdate.currentVersion, newVersion),
+                    value = string.format("To: `%s`", newVersion),
                     inline = true
                 },
                 {
                     name = "👤 User",
                     value = string.format("`%s` (`%d`)", systemInfo.username, systemInfo.userId),
-                    inline = true
-                },
-                {
-                    name = "🔧 Executor",
-                    value = string.format("`%s`", systemInfo.executor),
-                    inline = true
-                },
-                {
-                    name = "🎮 Game", 
-                    value = string.format("`%s`", systemInfo.gameName),
                     inline = true
                 }
             }
@@ -265,7 +188,7 @@ local function setupAutoUpdate()
             task.wait(5)
             
             local updateChoice = Library:Notify(
-                "🎉 New Version " .. latestVersion .. " Available!\nDo you want to update now?",
+                "🎉 New Version Available!\nDo you want to update now?",
                 10,
                 {
                     "Update Now"
@@ -283,7 +206,7 @@ local function setupAutoUpdate()
         silentUpdateCheck = silentUpdateCheck,
         showUpdateNotification = showUpdateNotification,
         performUpdate = performUpdate,
-        getCurrentVersion = function() return AutoUpdate.currentVersion end
+        getCurrentVersion = function() return "Latest" end
     }
 end
 
