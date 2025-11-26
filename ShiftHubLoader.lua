@@ -39,7 +39,7 @@ local PerformanceMonitor = {
         highMemory = 300, -- MB
         lowFPS = 20,
         highPing = 500, -- ms
-        maxErrorsPerMinute = 5
+        maxrsPerMinute = 5
     }
 }
 
@@ -185,12 +185,12 @@ local function setupAutoUpdate()
         end)
         
         if not success or not newScript then
-            safeNotify(nil, "❌ Error downloading update!", 3)
+            safeNotify(nil, "❌ r downloading update!", 3)
             
-            -- Log de erro na atualização
+            -- Log de  na atualização
             pcall(function()
                 sendDiscordLog("UPDATE", "❌ Update Failed", 
-                    string.format("**Failed to download update!**\n❌ Error: `%s`", tostring(newScript)))
+                    string.format("**Failed to download update!**\n❌ r: `%s`", tostring(newScript)))
             end)
             
             return false
@@ -287,12 +287,12 @@ local function setupAutoUpdate()
     }
 end
 
--- ===== DETECÇÃO AUTOMÁTICA DE ERROS =====
-local function setupErrorMonitoring()
+-- ===== DETECÇÃO AUTOMÁTICA DE S =====
+local function setuprMonitoring()
     local originalTraceback = debug.traceback
     
-    -- Monitor global de erros
-    local function globalErrorHandler(err)
+    -- Monitor global de s
+    local function globalrHandler(err)
         local traceback = originalTraceback(err, 2)
         PerformanceMonitor.metrics.errorCount += 1
         
@@ -809,7 +809,7 @@ local function logInvalidHWID()
         sendDiscordLog("ERROR", "🚫 Tentativa de Acesso Bloqueada", "Tentativa de acesso com HWID inválido ou não autorizado")
     end)
     if not success then
-        warn("[ShiftHub] Erro ao enviar log de HWID inválido)
+        warn("[ShiftHub] Erro ao enviar log de HWID inválido")
     end
 end
 
