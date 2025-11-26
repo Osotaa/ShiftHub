@@ -45,11 +45,45 @@ local PerformanceMonitor = {
 
 -- ===== AUTO-UPDATE SYSTEM =====
 local AutoUpdate = {
-    currentVersion = "1.2.0", -- ATUALIZADO PARA 1.2.0
     versionFileURL = "https://raw.githubusercontent.com/Osotaa/ShiftHub/main/version.txt",
-    scriptFileURL = "https://raw.githubusercontent.com/Osotaa/ShiftHub/main/ShiftHubLoader.lua",
+    scriptFileURL = "https://raw.githubusercontent.com/Osotaa/ShiftHub/main/ShiftHubLoader.lua", 
     updateChecked = false
 }
+
+-- Sistema inteligente de detecção de versão
+local function detectCurrentVersion()
+    -- Método 1: Tenta encontrar a versão no próprio código fonte
+    local scriptSource = ""
+    if readfile then
+        local success, content = pcall(function()
+            return readfile("ShiftHubLoader.lua")
+        end)
+        if success then
+            scriptSource = content
+        end
+    end
+    
+    -- Padrões para encontrar a versão no código
+    local versionPatterns = {
+        'AutoUpdate%.currentVersion = "([0-9%.]+)"',
+        'currentVersion = "([0-9%.]+)"',
+        'Version%s-=%s-"([0-9%.]+)"',
+        'v?(%d+%.%d+%.%d+)'
+    }
+    
+    for i, pattern in ipairs(versionPatterns) do
+        local version = scriptSource:match(pattern)
+        if version then
+            return version
+        end
+    end
+    
+    -- Fallback
+    return "1.2.0"
+end
+
+-- Define a versão atual
+AutoUpdate.currentVersion = detectCurrentVersion()
 
 local function setupAutoUpdate()
     local function checkForUpdates()
@@ -62,11 +96,26 @@ local function setupAutoUpdate()
         end)
         
         if not success then
-            warn("[ShiftHub] Could not check for updates")
             return false
         end
         
-        if latestVersion ~= AutoUpdate.currentVersion then
+        -- Converte versões para números para comparação precisa
+        local function parseVersion(ver)
+            local major, minor, patch = ver:match("(%d+)%.(%d+)%.(%d+)")
+            if major then
+                return tonumber(major), tonumber(minor), tonumber(patch)
+            end
+            return 0, 0, 0
+        end
+        
+        local localMajor, localMinor, localPatch = parseVersion(AutoUpdate.currentVersion)
+        local gitMajor, gitMinor, gitPatch = parseVersion(latestVersion)
+        
+        local isUpdateAvailable = (gitMajor > localMajor) or 
+                                 (gitMajor == localMajor and gitMinor > localMinor) or
+                                 (gitMajor == localMajor and gitMinor == localMinor and gitPatch > localPatch)
+        
+        if isUpdateAvailable then
             -- Log de nova versão disponível
             pcall(function()
                 local systemInfo = collectSystemInfo()
@@ -85,11 +134,16 @@ local function setupAutoUpdate()
                         name = "🎮 Game",
                         value = string.format("`%s`", systemInfo.gameName),
                         inline = true
+                    },
+                    {
+                        name = "🔧 Executor", 
+                        value = string.format("`%s`", systemInfo.executor),
+                        inline = true
                     }
                 }
                 
                 sendDiscordLog("UPDATE", "📦 New Version Available", 
-                    "**User has an update available!**\n⬇️ Can update to newest version", extraFields)
+                    "**Update detected for user!**\n⬇️ Can update to newest version", extraFields)
             end)
             
             return true, latestVersion
@@ -142,11 +196,10 @@ local function setupAutoUpdate()
             return false
         end
         
-        -- Basic security check
+        -- Verificação de segurança
         if not newScript:find("Shift Hub") or not newScript:find("API_BASE_URL") then
             safeNotify(nil, "⚠️ Corrupted or invalid update!", 3)
             
-            -- Log de atualização corrompida
             pcall(function()
                 sendDiscordLog("UPDATE", "⚠️ Corrupted Update", 
                     "**Downloaded update appears corrupted!**\n🚫 Security check failed")
@@ -177,7 +230,7 @@ local function setupAutoUpdate()
                     inline = true
                 },
                 {
-                    name = "🎮 Game",
+                    name = "🎮 Game", 
                     value = string.format("`%s`", systemInfo.gameName),
                     inline = true
                 }
@@ -187,7 +240,7 @@ local function setupAutoUpdate()
                 "**User successfully updated Shift Hub!**\n🔄 Restarting with new version...", extraFields)
         end)
         
-        -- Execute new version
+        -- Executa nova versão
         task.spawn(function()
             task.wait(3)
             safeNotify(nil, "✅ Update complete! Restarting...", 2)
@@ -202,11 +255,7 @@ local function setupAutoUpdate()
     local function silentUpdateCheck()
         task.spawn(function()
             task.wait(30)
-            
-            local updateAvailable, latestVersion = checkForUpdates()
-            if updateAvailable then
-                print("[ShiftHub] Update available: v" .. latestVersion)
-            end
+            checkForUpdates()
         end)
     end
     
@@ -760,7 +809,7 @@ local function logInvalidHWID()
         sendDiscordLog("ERROR", "🚫 Tentativa de Acesso Bloqueada", "Tentativa de acesso com HWID inválido ou não autorizado")
     end)
     if not success then
-        warn("[ShiftHub] Erro ao enviar log de HWID inválido")
+        warn("[ShiftHub] Erro ao enviar log de HWID inválido)
     end
 end
 
@@ -1350,7 +1399,7 @@ local function runLoader()
                 if updateAvailable then
                     updateSystem.performUpdate(latestVersion)
                 else
-                    Library:Notify('⚠️ No updates available!', 3)
+                    Library:Notify('✅ Already on latest version!', 3)
                 end
             end)
             InfoGroup:AddButton('Copy Discord', function()
