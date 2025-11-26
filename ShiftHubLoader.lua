@@ -43,162 +43,30 @@ local PerformanceMonitor = {
     }
 }
 
--- ===== AUTO-UPDATE SYSTEM =====
+-- ===== VERSÃO FIXA (ALTERE MANUALMENTE) =====
+local CURRENT_VERSION = "1.2.4" -- ALTERE ESTE NÚMERO PARA ATUALIZAR A VERSÃO
+
+-- ===== AUTO-UPDATE SYSTEM DESATIVADO =====
 local AutoUpdate = {
-    versionFileURL = "https://raw.githubusercontent.com/Osotaa/ShiftHub/main/version.txt",
-    scriptFileURL = "https://raw.githubusercontent.com/Osotaa/ShiftHub/main/ShiftHubLoader.lua", 
     updateChecked = false
 }
 
 local function setupAutoUpdate()
     local function checkForUpdates()
-        if AutoUpdate.updateChecked then return end
-        AutoUpdate.updateChecked = true
-        
-        -- FORÇA a busca da versão mais recente (sem cache)
-        local success, latestVersion = pcall(function()
-            -- Adiciona timestamp para evitar cache
-            local url = AutoUpdate.versionFileURL .. "?t=" .. os.time()
-            local version = game:HttpGet(url)
-            return version and version:gsub("%s+", "") or "unknown"
-        end)
-        
-        if not success then
-            return false, "unknown"
-        end
-        
-        -- Busca a versão atual do usuário (também sem cache)
-        local success2, currentVersion = pcall(function()
-            local url = AutoUpdate.versionFileURL .. "?current=" .. os.time()
-            local version = game:HttpGet(url)
-            return version and version:gsub("%s+", "") or "unknown"
-        end)
-        
-        -- Se não conseguiu pegar a versão atual, assume que precisa atualizar
-        local needsUpdate = not success2 or (latestVersion ~= currentVersion)
-        
-        if needsUpdate then
-            -- Log de nova versão disponível
-            pcall(function()
-                local systemInfo = collectSystemInfo()
-                local extraFields = {
-                    {
-                        name = "🔄 Update Info",
-                        value = string.format("GitHub: `%s`", latestVersion),
-                        inline = true
-                    },
-                    {
-                        name = "👤 User",
-                        value = string.format("`%s` (`%d`)", systemInfo.username, systemInfo.userId),
-                        inline = true
-                    },
-                    {
-                        name = "🎮 Game", 
-                        value = string.format("`%s`", systemInfo.gameName),
-                        inline = true
-                    }
-                }
-                
-                sendDiscordLog("UPDATE", "📦 Update Check", 
-                    "**User needs update!**\n⬇️ Can update to newest version", extraFields)
-            end)
-            
-            return true, latestVersion
-        end
-        
-        return false, latestVersion
-    end
-    
-    local function performUpdate(newVersion)
-        safeNotify(nil, "📥 Downloading update...", 3)
-        
-        -- Log de início da atualização
-        pcall(function()
-            local systemInfo = collectSystemInfo()
-            local extraFields = {
-                {
-                    name = "🔄 Update Started", 
-                    value = string.format("To: `%s`", newVersion),
-                    inline = true
-                },
-                {
-                    name = "👤 User",
-                    value = string.format("`%s`", systemInfo.username),
-                    inline = true
-                }
-            }
-            
-            sendDiscordLog("UPDATE", "🚀 Update Started", 
-                "**User started updating Shift Hub**\n⬇️ Downloading new version...", extraFields)
-        end)
-        
-        local success, newScript = pcall(function()
-            return game:HttpGet(AutoUpdate.scriptFileURL .. "?t=" .. os.time())
-        end)
-        
-        if not success or not newScript then
-            safeNotify(nil, "❌ Error downloading update!", 3)
-            return false
-        end
-        
-        safeNotify(nil, "🔧 Installing update...", 2)
-        
-        -- Log de sucesso na atualização
-        pcall(function()
-            local systemInfo = collectSystemInfo()
-            local extraFields = {
-                {
-                    name = "✅ Update Successful",
-                    value = string.format("To: `%s`", newVersion),
-                    inline = true
-                },
-                {
-                    name = "👤 User",
-                    value = string.format("`%s` (`%d`)", systemInfo.username, systemInfo.userId),
-                    inline = true
-                }
-            }
-            
-            sendDiscordLog("UPDATE", "🎉 Update Completed Successfully", 
-                "**User successfully updated Shift Hub!**\n🔄 Restarting with new version...", extraFields)
-        end)
-        
-        -- Executa nova versão
-        task.spawn(function()
-            task.wait(3)
-            safeNotify(nil, "✅ Update complete! Restarting...", 2)
-            task.wait(2)
-            
-            loadstring(newScript)()
-        end)
-        
-        return true
+        return false, CURRENT_VERSION -- Sempre retorna que não precisa atualizar
     end
     
     local function silentUpdateCheck()
-        task.spawn(function()
-            task.wait(30)
-            checkForUpdates()
-        end)
+        -- Não faz nada
     end
     
     local function showUpdateNotification()
-        local updateAvailable, latestVersion = checkForUpdates()
-        if updateAvailable then
-            task.wait(5)
-            
-            local updateChoice = Library:Notify(
-                "🎉 New Version Available!\nDo you want to update now?",
-                10,
-                {
-                    "Update Now"
-                }
-            )
-            
-            if updateChoice == "Update Now" then
-                performUpdate(latestVersion)
-            end
-        end
+        -- Não mostra notificações de update
+    end
+    
+    local function performUpdate()
+        -- Não executa atualizações
+        return false
     end
     
     return {
@@ -206,16 +74,16 @@ local function setupAutoUpdate()
         silentUpdateCheck = silentUpdateCheck,
         showUpdateNotification = showUpdateNotification,
         performUpdate = performUpdate,
-        getCurrentVersion = function() return "Latest" end
+        getCurrentVersion = function() return CURRENT_VERSION end -- Retorna a versão fixa
     }
 end
 
 -- ===== DETECÇÃO AUTOMÁTICA DE S =====
-local function setuprMonitoring()
+local function setupErrorMonitoring()
     local originalTraceback = debug.traceback
     
     -- Monitor global de s
-    local function globalrHandler(err)
+    local function globalErrorHandler(err)
         local traceback = originalTraceback(err, 2)
         PerformanceMonitor.metrics.errorCount += 1
         
@@ -1002,7 +870,7 @@ local function runLoader()
     pcall(setupAdminDetection)
     pcall(setupAPIMonitoring)
     
-    -- INICIALIZA SISTEMA DE AUTO-UPDATE
+    -- INICIALIZA SISTEMA DE AUTO-UPDATE (DESATIVADO)
     local updateSystem = setupAutoUpdate()
     
     safeNotify(nil, "Loading game...", 3)
@@ -1048,9 +916,6 @@ local function runLoader()
         -- LOG: Script iniciado com sucesso (PROTEGIDO)
         pcall(logScriptStart)
         
-        -- VERIFICA ATUALIZAÇÕES SILENCIOSAMENTE
-        pcall(updateSystem.silentUpdateCheck)
-        
         safeNotify(nil, "Verifying User ID...", 2)
         task.wait(1.5)
         safeNotify(nil, 'Hello: ' .. LocalPlayer.Name, 2)
@@ -1067,12 +932,6 @@ local function runLoader()
             
             -- LOG: Autenticação bem-sucedida (PROTEGIDO)
             pcall(logAuthSuccess)
-            
-            -- MOSTRA NOTIFICAÇÃO DE ATUALIZAÇÃO SE HOUVER
-            task.spawn(function()
-                task.wait(10) -- Espera a UI carregar completamente
-                pcall(updateSystem.showUpdateNotification)
-            end)
             
             -- Inicializar sistema de rollback
             local rollbackSystem = setupRollbackSystem()
@@ -1304,26 +1163,13 @@ local function runLoader()
 
             local InfoGroup = Tabs['UI Settings']:AddRightGroupbox('Information')
             InfoGroup:AddLabel('Script: Shift Hub 🫦')
-            InfoGroup:AddLabel('Version: ' .. updateSystem.getCurrentVersion())
+            InfoGroup:AddLabel('Version: ' .. CURRENT_VERSION) -- MOSTRA A VERSÃO FIXA
             InfoGroup:AddLabel('Game: ' .. gameName)
             InfoGroup:AddDivider()
             InfoGroup:AddLabel('User: ' .. LocalPlayer.Name)
             InfoGroup:AddDivider()
             InfoGroup:AddButton('Check for Updates', function()
-                local updateAvailable, latestVersion = updateSystem.checkForUpdates()
-                if updateAvailable then
-                    updateSystem.showUpdateNotification()
-                else
-                    Library:Notify('✅ You are on the latest version!', 3)
-                end
-            end)
-            InfoGroup:AddButton('Force Update', function()
-                local updateAvailable, latestVersion = updateSystem.checkForUpdates()
-                if updateAvailable then
-                    updateSystem.performUpdate(latestVersion)
-                else
-                    Library:Notify('✅ Already on latest version!', 3)
-                end
+                Library:Notify('✅ You are on version ' .. CURRENT_VERSION, 3)
             end)
             InfoGroup:AddButton('Copy Discord', function()
                 if setclipboard then
