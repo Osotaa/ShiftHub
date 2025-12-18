@@ -1,1 +1,20 @@
 
+[1.2.2]
+- Fixed infinite loading screen during updates
+- Update modal now appears in front of game GUI
+- Improved update animations and transitions
+- Added automatic 7-second timeout for loading screen
+- Better error handling with retry option
+
+[1.2.1]
+- Added rollback system for Trait and Summon
+- Performance monitoring system
+- Discord logging integration
+- Auto-update system implemented
+- Professional UI with Linoria Library
+
+[1.2.0]
+- Initial release with core features
+- Support for multiple games
+- HWID authentication system
+- Basic rollback functionality
