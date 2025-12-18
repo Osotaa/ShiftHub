@@ -1,3 +1,5 @@
+[1.5.0]
+-Fixed bugs and lags and tests
 
 [1.4.0]
 -Fixed Lags
