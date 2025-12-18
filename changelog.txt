@@ -1,3 +1,8 @@
-
 [1.3.0]
-- Fixed infinite loading!
+- Fixed infinite loading screen during updates
+- Update modal now appears in front of game GUI
+- Added beautiful changelog modal after updates
+- Loading screen now uses spinning gear animation
+- Custom background image on loading screen
+- GUI fade effect (F5) when updating
+- Improved visual design throughout
